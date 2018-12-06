@@ -10,7 +10,7 @@ body {
   left: 3vw;
   position: relative;
   display: grid;
-	grid-template-columns: 75% 25%;
+  grid-template-columns: 75% 25%;
   height: 80px;
   padding-bottom: 10px;
   padding-right: 3vh;
@@ -82,7 +82,7 @@ body {
   margin: 10;
   height: 15px;
   width: 300px;
-  font-family: "RALEWAY-bold";
+  font-family: 'Raleway', sans-serif;
   font-style: bold;
   font-size: 30px;
   color:  rgba(6, 71, 255, 1);
@@ -215,7 +215,7 @@ body {
 
 .p {
   font-size: 11px;
-  font-family: "RALEWAY-semibold";
+  font-family: 'Raleway', sans-serif;
   color:  rgba(6, 71, 255, 1);
   text-align: center;
   margin-top: 3px;
@@ -376,7 +376,7 @@ body {
       color: #ffffff;
       float: right;
       font-size: 30px;
-      font-family: 'RALEWAY-semibold';
+      font-family:'Raleway', sans-serif;
       cursor: pointer;
     }
       .close:hover,
@@ -394,7 +394,7 @@ body {
     .modal-title {
       padding-top: 10px;
       color: rgba(255, 255, 255, 1);
-      font-family: "RALEWAY-semibold";
+      font-family: 'Raleway', sans-serif;
       font-size: 17px;
     }
 
