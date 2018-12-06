@@ -240,7 +240,8 @@ body {
   }
 
 .box {
-  background-image: url('https://marinezo.github.io/img/ELEMENTs/BG.svg') no-repeat;
+  background-image:url("https://marinezo.github.io/img/ELEMENTs/BG.svg");
+  background-size:cover;
   width: 100px;
   height: 100px;
   border: solid;
