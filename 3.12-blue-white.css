@@ -184,6 +184,7 @@ body {
 /* top */
 .top-bar {
   position: sticky;
+  -webkit-transform: translateZ(0);
   top: 0;
   z-index: 2;
   padding-top: 10px;
