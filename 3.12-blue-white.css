@@ -246,8 +246,8 @@ font-weight:bold;
   background-image url('https://marinezo.github.io/img/elements/BG.svg');
   background-image: repeating-linear-gradient(45deg,
   #5484fa,
-  #5484fa 2px,
-  #ffffff 4px,
+  #5484fa 1px,
+  #ffffff 5px,
   #ffffff 6px);
   width: 100px;
   height: 100px;
