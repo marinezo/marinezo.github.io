@@ -142,7 +142,7 @@ font-weight:bold;
   margin: 0;
   left: 15px;
   width: 75px;
-	height: 75px;
+height: 75px;
   margin-bottom: 42px;
 	margin-left: 6px;
   border-radius: 100%;
@@ -166,7 +166,8 @@ font-weight:bold;
   transform: translate(-50%, -50%);
   /*fin align*/
   width: 85px;
-	height:85px;
+height:85px;
+background-image: url('marinezo.github.io/img/final-icons/text/');
   }
 
 
