@@ -184,15 +184,15 @@ font-weight:bold;
 
 /* top */
 .top-bar {
-  position: sticky;
-  -webkit-transform: translateZ(0);
-  top: 0;
-  z-index: 2;
-  padding-top: 10px;
-	padding-bottom: 10px;
-	width: 960px;
-	height: 20px;
-	display: grid;
+position: sticky;
+-webkit-transform: translateZ(0);
+top: 0;
+z-index: 2;
+padding-top: 10px;
+padding-bottom: 10px;
+width: 960px;
+height: 20px;
+display: grid;
   background: rgba(255, 255, 255, 1)
 	}
 
