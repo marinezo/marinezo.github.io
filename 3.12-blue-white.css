@@ -245,10 +245,10 @@ font-weight:bold;
 .box {
   background-image url('https://marinezo.github.io/img/elements/BG.svg');
   background-image: repeating-linear-gradient(45deg,
-  #606dbc,
-  #606dbc 10px,
-  #465298 10px,
-  #465298 20px);
+  #5484fa,
+  #5484fa 2px,
+  #ffffff 4px,
+  #ffffff 6px);
   width: 100px;
   height: 100px;
   border: solid;
