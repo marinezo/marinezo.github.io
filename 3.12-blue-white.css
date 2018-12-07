@@ -185,7 +185,7 @@ font-weight:bold;
 /* top */
 .top-bar {
 position: sticky;
--webkit-transform: translateZ(0);
+  transform: translate3d(0,0,0);
 top: 0;
 z-index: 2;
 padding-top: 10px;
