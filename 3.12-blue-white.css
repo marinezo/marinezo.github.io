@@ -244,8 +244,8 @@ font-weight:bold;
 
 .box {
   background-image url('https://marinezo.github.io/img/elements/BG.svg');
-  background-size: 6px 6px !important
-  +background-image(linear-gradient(-45deg, transparent 46%, blue 49%, blue 51%, transparent 55%))
+ background-image: linear-gradient(45deg, #596bf2 8.33%, #ffffff 8.33%, #ffffff 50%, #596bf2 50%, #596bf2 58.33%, #ffffff 58.33%, #ffffff 100%);
+background-size: 8.49px 8.49px;
   width: 100px;
   height: 100px;
   border: solid;
