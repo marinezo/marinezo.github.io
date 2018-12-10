@@ -81,7 +81,7 @@ body {
   margin: 10;
   height: 15px;
   width: 300px;
-  font-family: "  font-family: 'Raleway', sans-serif;";
+ font-family: 'Raleway', sans-serif;
   font-style: bold;
   font-size: 30px;
   color:  rgba(6, 71, 255, 1);
@@ -92,7 +92,7 @@ body {
   height: 20px;
   width: 600px;
   font-family: "baskerville-semibold";
-  font-style: bold;
+  font-weight: bold;
   font-size: 20px;
   color:  rgba(6, 71, 255, 1);
 }
@@ -255,6 +255,7 @@ body {
 .p {
   font-size: 11px;
   font-family: 'Raleway', sans-serif;
+font-weight: bold;
   color:  rgba(6, 71, 255, 1);
   text-align: center;
   margin-top: 3px;
@@ -438,7 +439,7 @@ font-family: 'Raleway', sans-serif;
     .modal-title {
       padding-top: 10px;
       color: rgba(255, 255, 255, 1);
-	  font-family: 'Raleway', sans-serif;
+	font-family: 'Raleway', sans-serif;
       font-size: 17px;
     }
 
