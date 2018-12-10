@@ -7,14 +7,14 @@ body {
 }
 /*header*/
 .header {
-  left: 3vw;
   position: relative;
+  margin: auto;
   display: grid;
-  grid-template-columns: 75% 25%;
+	grid-template-columns: 75% 25%;
   height: 80px;
   padding-bottom: 10px;
   padding-right: 3vh;
-  max-width: 1070px;
+  max-width: 835px;
   background : rgba255, 255, 255, 1)
 }
 
@@ -33,6 +33,7 @@ body {
   border: solid;
   border-color:  rgba(6, 71, 255, 1);
   border-width: 1px;
+  border-radius: 20px;
   color:  rgba(6, 71, 255, 1);
   font-size: 13px;
   font-family: "arial";
@@ -54,13 +55,11 @@ body {
   .instrc {
     width: 25px;
   	height: 25px;
-    border-radius: 20px;
   }
 
   .about {
     width: 55px;
   	height: 25px;
-    border-radius: 20px;
   }
 
   .prdct {
@@ -82,12 +81,10 @@ body {
   margin: 10;
   height: 15px;
   width: 300px;
-  font-family: 'Raleway', sans-serif;
-font-weight:bold;
+  font-family: "RALEWAY-bold";
   font-style: bold;
   font-size: 30px;
   color:  rgba(6, 71, 255, 1);
-  padding-left: 3.5vw;
 }
 
 .title-secondary {
@@ -98,7 +95,6 @@ font-weight:bold;
   font-style: bold;
   font-size: 20px;
   color:  rgba(6, 71, 255, 1);
-  padding-left: 3.5vw;
 }
 
 /* matrix */
@@ -108,7 +104,7 @@ font-weight:bold;
 	width: 94vw;
 	height: 80vh;
 	max-height: 790px;
-	max-width: 1070px;
+	max-width: 830px;
   border: solid;
 	border-color:  rgba(6, 71, 255, 1);
 	border-radius: 20px;
@@ -120,10 +116,10 @@ font-weight:bold;
 	width: 94vw;
 	height: 83vh;
 	max-height: 780px;
-	max-width: 1070px;
+	max-width: 830px;
   border-color:  rgba(6, 71, 255, 1);
 	display: grid;
-	grid-template-columns: 100px 900px;
+	grid-template-columns: 100px 700px;
 	margin-top: 2vh;
   overflow: auto;
 
@@ -142,7 +138,7 @@ font-weight:bold;
   margin: 0;
   left: 15px;
   width: 75px;
-height: 75px;
+	height: 75px;
   margin-bottom: 42px;
 	margin-left: 6px;
   border-radius: 100%;
@@ -166,40 +162,81 @@ height: 75px;
   transform: translate(-50%, -50%);
   /*fin align*/
   width: 85px;
-height:85px;
-background-image: url('marinezo.github.io/img/final-icons/text/');
+	height:85px;
   }
 
+  .pitch {
+    background-image: url('img/final-icons/icon-pitch.svg');
+    }
 
+    .pitch:hover{
+      background-image: url('img/final-icons/text/icon-pitch.svg');
+      background-repeat: no-repeat;
+      transition: .2s;
+    }
 
-  .pitch:hover{
-
-
+  .gran {
+    background-image: url('img/final-icons/icon-gran.svg');
   }
-  .gran {}
-  .diat{}
-  .chrom{}
-  .chord{}
-  .gate{}
+    .gran:hover {
+      background-image: url('img/final-icons/text/icon-gran.svg');
+      background-repeat: no-repeat;
+      transition: .2s;
+    }
+
+  .diat {
+    background-image: url('img/final-icons/icon-scale-diat.svg');
+  }
+    .diat:hover {
+      background-image: url('img/final-icons/text/icon-scale-diat.svg');
+      background-repeat: no-repeat;
+      transition: .2s;
+    }
+
+  .chrom {
+    background-image: url('img/final-icons/icon-scale-chrom.svg');
+    }
+    .chrom:hover {
+      background-image: url('img/final-icons/text/icon-scale-chrom.svg');
+      background-repeat: no-repeat;
+      transition: .2s;
+    }
+  .chord{
+    background-image: url('img/final-icons/icon-chord.svg');
+    }
+
+    .chord:hover {
+      background-image: url('img/final-icons/text/icon-chord.svg');
+      background-repeat: no-repeat;
+      transition: .2s;
+    }
+
+  .gate{
+    background-image: url('img/final-icons/icon-gate.svg');
+  }
+  .gate:hover {
+    background-image: url('img/final-icons/text/icon-gate.svg');
+    background-repeat: no-repeat;
+    transition: .2s;
+  }
 
 
 /* top */
 .top-bar {
-position: sticky;
-  transform: translate3d(0,0,0);
-top: 0;
-z-index: 2;
-padding-top: 10px;
-padding-bottom: 10px;
-width: 960px;
-height: 20px;
-display: grid;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding-top: 10px;
+	padding-bottom: 10px;
+	width: 710px;
+	height: 20px;
+	display: grid;
   background: rgba(255, 255, 255, 1)
 	}
 
   .stick-border {
     margin-left: 25px;
-    width: 920px;
+    width: 678px;
   	height: 2px;
     border-bottom: solid;
     border-width: 1px;
@@ -210,15 +247,14 @@ display: grid;
 .txt-box {
     display: grid;
   	padding-left: 25px;
-  	width: 925px;
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+  	width: 690px;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
     grid-column-gap: 13px;
   }
 
 .p {
   font-size: 11px;
-  font-family: 'Raleway', sans-serif;
-font-weight:bold;
+  font-family: "RALEWAY-semibold";
   color:  rgba(6, 71, 255, 1);
   text-align: center;
   margin-top: 3px;
@@ -237,16 +273,16 @@ font-weight:bold;
   }
 
 .div {
-  width: 935px;
+  width: 690px;
   height: 117px;
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
   }
 
 .box {
-  background-image url('https://marinezo.github.io/img/elements/BG.svg');
- background-image: linear-gradient(45deg, #596bf2 8.33%, #ffffff 8.33%, #ffffff 50%, #596bf2 50%, #596bf2 58.33%, #ffffff 58.33%, #ffffff 100%);
-background-size: 8.49px 8.49px;
+  background-image url('img/ELEMENTs/BG.svg');
+  background-image: linear-gradient(45deg, #596bf2 8.33%, #ffffff 8.33%, #ffffff 50%, #596bf2 50%, #596bf2 58.33%, #ffffff 58.33%, #ffffff 100%);
+  background-size: 8.49px 8.49px;
   width: 100px;
   height: 100px;
   border: solid;
@@ -295,7 +331,6 @@ background-size: 8.49px 8.49px;
   */
 
 .play {
-font-family: "ariel";
     padding-top: 60px;
     text-align: left;
     width: 100px;
@@ -364,9 +399,11 @@ font-family: "ariel";
     .modal-content {
       position:relative;
       margin: 0 auto;
-      margin-top: 70px;
-      width: 800px;
-      height: 600px;
+      margin-top: 60px;
+      width: 94vw;
+      height: 83vh;
+      max-width: 800px;
+      max-height: 620px;
       overflow: auto;
       align-content: center;
       border solid;
@@ -382,7 +419,7 @@ font-family: "ariel";
       color: #ffffff;
       float: right;
       font-size: 30px;
-      font-family:'Raleway', sans-serif;
+      font-family: 'RALEWAY-semibold';
       cursor: pointer;
     }
       .close:hover,
@@ -393,37 +430,39 @@ font-family: "ariel";
     	 }
 
     .header-modal {
+      height: 80px;
       display: grid;
-      grid-template-columns: 80px 700px 20px;
+      grid-template-columns: 90px 670px 30px;
     }
 
     .modal-title {
       padding-top: 10px;
       color: rgba(255, 255, 255, 1);
-      font-family: 'Raleway', sans-serif;
-font-weight:bold;
+      font-family: "RALEWAY-semibold";
       font-size: 17px;
     }
 
-    .modal-icon {
-      left: 0;
-      width: 70px;
-      height:70px;
-    }
+      .modal-icon {
+        margin: auto;
+        left: 0;
+        width: 70px;
+        height:70px;
+        }
 
     .mid-modal {
       position: relative;
       display: grid;
-    	grid-template-columns: 50% 50%;
-      grid-column-gap: 1px;
-      padding-left: 70px;
+    	grid-template-columns: 40% 60%;
+      grid-column-gap: 13px;
       color: rgba(255, 255, 255, 1);
       font-family: arial;
       font-size: 13px;
     }
 
       .explain-box {
-        width: 300px;
+        height: 67px;
+        width: 320px;
+        padding-bottom: 13px;
         }
 
       a {
@@ -432,31 +471,7 @@ font-weight:bold;
         font-family;
         }
 
-    .modal-Products {
-      width: 600px;
-      height: 200px;
-      padding-left: 70px;
 
-    }
-      .explain-box-products {
-        width: 600px;
-        color: rgba(255, 255, 255, 1);
-        font-family: arial;
-        font-size: 13px;
-      }
-      .products-img {
-        padding-bottom: 10px;
-        margin: 0 auto;
-        width: 600px;
-      }
-      .modal-img {
-        height:154.5px;
-        width:188.5px;
-        border: solid 1px;
-        border-radius: 20px;
-        border-color: rgba(255, 255, 255, 1);
-        MARGIN-LEFT:10px;
-      }
 
       .end-modal {
         margin-left: 20px;
@@ -501,3 +516,19 @@ font-weight:bold;
 }
 ::-webkit-scrollbar-thumb:hover {
     background:  rgba(6, 71, 255, 1);
+}
+
+    /*slideshow*/
+    .mySlides {display:none;}
+    .slideshow {
+      padding-top: 13px;
+      width: 400px;
+      height: 240px;
+      margin: 0 auto;
+      left: 10px;
+    }
+
+    .slide-container {
+      border: 0;
+    }
+
