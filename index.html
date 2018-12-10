@@ -3,15 +3,12 @@
 <title>Home Soundscape Toolkit</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="3.12-blue-white.css" rel="stylesheet" type="text/css">
-<link href="//fonts.googleapis.com/css?family=Raleway:400,700" rel="stylesheet">
 <script>
 //audio
   function play(element){
    var audio = document.getElementById(element);
    audio.play();
              }
-//side add class on scroll
-
 </script>
 
 </head>
@@ -33,21 +30,22 @@
       <//side bar>
       <header class="side">
         <div class="sd-br-div top">
+          <div class="sd-br-img pitch"></div>
         </div>
         <div class="sd-br-div">
-        <img class="sd-br-img" src="img/final-icons/icon-gran.svg" />
+        <div class="sd-br-img gran"></div>
         </div>
         <div class="sd-br-div">
-          <img class="sd-br-img" src="img/final-icons/icon-scale-diat.svg" />
+          <div class="sd-br-img diat"></div>
         </div>
         <div class="sd-br-div">
-          <img class="sd-br-img" src="img/final-icons/icon-scale-chrom.svg" />
+          <div class="sd-br-img chrom"></div>
         </div>
         <div class="sd-br-div">
-          <img class="sd-br-img" src="img/final-icons/icon-chord.svg" />
+          <div class="sd-br-img chord"></div>
         </div>
         <div class="sd-br-div bottom">
-          <img class="sd-br-img" src="img/final-icons/icon-gate.svg" />
+          <div class="sd-br-img gate"></div>
         </div>
       </header>
 
@@ -59,10 +57,8 @@
             <p class="p left">ON - OFF</p>
     				<p class="p left">UP - DOWN</p>
     				<p class="p left">EMPTY - FULL</p>
-    				<p class="p left">FAR - CLOSE</p>
     				<p class="p left">HOT - COLD</p>
     				<p class="p">WEAK - STRONG</p>
-    				<p class="p">DANGER - SAFE</p>
     				<p class="p">3+ STEPS</p>
           </div>
           <div class="stick-border">
@@ -81,9 +77,10 @@
               <button onclick="document.getElementById('id02').style.display='block'" class="myBtn">see more</button>
           </div>
           <div class="box"></div>
-          <div class="box"></div>
-          <div class="box"></div>
-          <div class="box"></div>
+          <div class="box match">
+            <input class="box match play" type="button" value=" ►"  onclick="play('audio1')">
+            <button onclick="document.getElementById('id02').style.display='block'" class="myBtn">see more</button>
+          </div>
           <div class="box"></div>
           <div class="box"></div>
         </div>
@@ -95,9 +92,10 @@
               <button onclick="document.getElementById('id03').style.display='block'" class="myBtn">see more</button>
           </div>
           <div class="box"></div>
-          <div class="box"></div>
-          <div class="box"></div>
-          <div class="box"></div>
+          <div class="box match">
+            <input class="box match play" type="button" value="►"  onclick="play('audio1')">
+            <button onclick="document.getElementById('id03').style.display='block'" class="myBtn">see more</button>
+          </div>
           <div class="box"></div>
         </div>
         <div class="div">
@@ -112,8 +110,6 @@
           </div>
           <div class="box"></div>
           <div class="box"></div>
-          <div class="box"></div>
-          <div class="box"></div>
           <div class="box match">
               <input class="box match play" type="button" value="►"  onclick="play('audio3')">
               <button onclick="document.getElementById('id06').style.display='block'" class="myBtn">see more</button>
@@ -125,22 +121,27 @@
               <input class="play " type="button" value="►"  onclick="play('audio4')">
               <button onclick="document.getElementById('id07').style.display='block'" class="myBtn ">see more</button>
           </div>
-          <div class="box"></div>
-          <div class="box"></div>
-          <div class="box"></div>
+          <div class="box match">
+            <input class="play" type="button" value="►"  onclick="play('audio4')">
+            <button onclick="document.getElementById('id07').style.display='block'" class="myBtn ">see more</button>
+          </div>
           <div class="box"></div>
           <div class="box"></div>
           <div class="box"></div>
         </div>
         <div class="div">
+          <div class="box match">
+            <input class="play " type="button" value="►"  onclick="play('audio4')">
+            <button onclick="document.getElementById('id07').style.display='block'" class="myBtn ">see more</button>
+          </div>
           <div class="box"></div>
           <div class="box"></div>
           <div class="box"></div>
           <div class="box"></div>
-          <div class="box"></div>
-          <div class="box"></div>
-          <div class="box"></div>
-          <div class="box"></div>
+          <div class="box match">
+            <input class="play " type="button" value="►"  onclick="play('audio4')">
+            <button onclick="document.getElementById('id07').style.display='block'" class="myBtn ">see more</button>
+          </div>
         </div>
         <div class="div">
           <div class="box"></div>
@@ -155,14 +156,12 @@
               <input class="box match play" type="button" value="►"  onclick="play('audio6')">
               <button onclick="document.getElementById('id06').style.display='block'" class="myBtn">see more</button>
           </div>
-          <div class="box"></div>
-          <div class="box"></div>
         </div>
       </div>
      </div>
 
       <//audio>
-       <audio id="audio1" src="http://marinezo.github.io/snd/2_wind_s-1.aifc" ></audio>
+       <audio id="audio1" src="snd/01_pitch.ogg" ></audio>
        <audio id="audio2" src="snd/03_diatonic.ogg" ></audio>
        <audio id="audio3" src="snd/03_diatonic.ogg" ></audio>
        <audio id="audio4" src="snd/04_chrom.ogg" ></audio>
@@ -182,21 +181,44 @@
           </header>
 
           <div class="mid-modal">
-            <div class="explain-box"><p><B>sound: pitch shift</b><br><br>
-              Pitch shift is a sound variation in which the <a href="https://en.wikipedia.org/wiki/Pitch_(music)" target="_blank">pitch</a> of a sound (quantified as <a href="https://en.wikipedia.org/wiki/frequency" target="_blank">frequency</a>, unit: Hz) is raised or lowered.</p></div>
-            <div class="explain-box"><p><b>interaction: on\off</b><br><br>
-          on-off interaction refers to a controller, allowing turning a device or a function on or off.<p></div>
-          </div>
+            <div>
+              <div class="explain-box"><p><B>sound: pitch shift</b><br><br>
+                Pitch shift is a sound variation in which the <a href="https://en.wikipedia.org/wiki/Pitch_(music)" target="_blank">pitch</a> of a sound (quantified as <a href="https://en.wikipedia.org/wiki/frequency" target="_blank">frequency</a>, unit: Hz) is raised or lowered.</p></div>
+              <div class="explain-box"><p><b>interaction: on\off</b><br><br>
+                on-off interaction refers to a controller, allowing turning a device or a function on or off.<p></div>
+              <div class="explain-box"><p><b>interaction: on\off</b><br><br>                on-off interaction refers to a controller, allowing turning a device or a function on or off.<p></div>
 
-          <div class="MODAL-products">
-            <div class="explain-box-products"><p><B>examples</b><br>
-              can be attached as a feedback for the "on-off" button in electric devices such as a remote, or a kettle.</p>
+              </div>
+            <div class="slideshow">
+              <div class="w3-content slide-container">
+
+                <div class="slide-container mySlides">
+                  <img src="img/slideshow/pillbox.jpg" style="width:100%">
+                  <div>
+                    pillbox: counting pills
+                  </div>
+                </div>
+
+                <div class="slide-container mySlides">
+                  <img src="https://media.giphy.com/media/8Z5ms65gKFpc7UmFHS/giphy.gif" style="width:100%">
+                  <div>
+                    plant pot: indicating if water level is sufficient (full) or not (empty)
+                  </div>
+                </div>
+
+                <div class="slide-container mySlides">
+                  <img src="img/slideshow/remote.jpg" style="width:100%">
+                  <div>
+                    adjusting temperature in air-conditioner remote controller
+                  </div>
+                </div>
+
+                <button class="Btn" onclick="plusDivs(-1)">&#10094;</button>
+                <button class="Btn" onclick="plusDivs(1)">&#10095;</button>
+
+              </div>
             </div>
-            <div class="products-img">
-            <img class="modal-img" src="img/prdct/02_PILLBOX.svg" />
-            <img class="modal-img" src="img/prdct/01_remote.svg" />
-          </div>
-        </div>
+
         <p class="end-modal"><B>NOTICE!</b> make sure the chosen pitches lay within the average audible <a href="https://en.wikipedia.org/wiki/Auditory_system" target="_blank">frequency range</a> for your user age group.</p>
         </div>
       </div>
@@ -205,6 +227,25 @@
   </section>
 
 
+<script>
+//slideshow
+var slideIndex = 1;
+showDivs(slideIndex);
 
+function plusDivs(n) {
+  showDivs(slideIndex += n);
+}
+
+function showDivs(n) {
+  var i;
+  var x = document.getElementsByClassName("mySlides");
+  if (n > x.length) {slideIndex = 1}
+  if (n < 1) {slideIndex = x.length}
+  for (i = 0; i < x.length; i++) {
+     x[i].style.display = "none";
+  }
+  x[slideIndex-1].style.display = "block";
+}
+</script>
 </body>
 </html>
