@@ -228,7 +228,7 @@ body {
   z-index: 2;
   padding-top: 10px;
 	padding-bottom: 10px;
-	width: 710px;
+	width: 510px;
 	height: 20px;
 	display: grid;
   background: rgba(255, 255, 255, 1)
@@ -236,7 +236,7 @@ body {
 
   .stick-border {
     margin-left: 25px;
-    width: 678px;
+    width: 578px;
   	height: 2px;
     border-bottom: solid;
     border-width: 1px;
@@ -247,7 +247,7 @@ body {
 .txt-box {
     display: grid;
   	padding-left: 25px;
-  	width: 690px;
+  	width: 590px;
     grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
     grid-column-gap: 13px;
   }
@@ -273,7 +273,7 @@ body {
   }
 
 .div {
-  width: 690px;
+  width: 590px;
   height: 117px;
   display: grid;
   grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
