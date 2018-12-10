@@ -449,6 +449,12 @@ font-family: 'Raleway', sans-serif;
         width: 70px;
         height:70px;
         }
+	.side {
+          width: 35px;
+          height: 35px;
+          margin-top: 10px;
+        }
+
 
     .mid-modal {
       position: relative;
@@ -461,9 +467,11 @@ font-family: 'Raleway', sans-serif;
     }
 
       .explain-box {
+        display: grid;
+        grid-template-columns: 50px 270px;
         height: 67px;
         width: 320px;
-        padding-bottom: 13px;
+        padding-bottom: 30px;
         }
 
       a {
