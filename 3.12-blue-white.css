@@ -531,11 +531,13 @@ font-family: 'Raleway', sans-serif;
     .slideshow {
       padding-top: 13px;
       width: 400px;
-      height: 240px;
+      height: 220px;
       margin: 0 auto;
       left: 10px;
     }
 
     .slide-container {
       border: 0;
+ 	width: 400px;
+      height: 220px;
     }
