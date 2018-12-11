@@ -544,14 +544,12 @@ font-family: 'Raleway', sans-serif;
     }
 .slideshow-container {
 widht: 400px;
-padding-top: 13px;
 grid-template-columns: 50px 350px;
 margin: 0 auto;
 left: 10px;
 }
 
     .slide-container {
-      border: 0;
- 	width: 400px;
-      height: 220px;
+ width: 400px;
+ height: 220px;
     }
