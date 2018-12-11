@@ -471,7 +471,7 @@ font-family: 'Raleway', sans-serif;
         display: grid;
         grid-template-columns: 50px 270px;
         height: 67px;
-        width: 320px;
+        width: 340px;
         padding-bottom: 30px;
         }
 
@@ -535,14 +535,13 @@ font-family: 'Raleway', sans-serif;
     /*slideshow*/
     .mySlides {display:none;}
     .slideshow {
-      width: 350px;
+      width: 400px;
       height: 220px;
     }
 .slideshow-container {
-widht: 400px;
+widht: 450px;
 grid-template-columns: 50px 350px;
 margin-top: 0 auto;
-left: 10px;
 }
 
 
