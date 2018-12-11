@@ -103,7 +103,7 @@ body {
   align-content: center;
   margin:0 auto;
 	width: 94vw;
-	height: 94vh;
+	height: 96vh;
 	max-height: 900px;
 	max-width: 830px;
   border: solid;
@@ -115,7 +115,7 @@ body {
 
 .layout {
 	width: 94vw;
-	height: 94vh;
+	height: 96vh;
 	max-height: 900px;
 	max-width: 830px;
   border-color:  rgba(6, 71, 255, 1);
@@ -147,7 +147,7 @@ body {
   }
 
   .top {
-    margin-top: 80px;
+    margin-top: 70px;
     }
 
   .bottom {
@@ -240,7 +240,7 @@ body {
     width: 678px;
     height: 2px;
     border-bottom: solid;
-    border-width: 1px;
+    border-width: 5px;
     border-color:  rgba(6, 71, 255, 1);
     background: rgba(255, 255, 255, 1);
   }
