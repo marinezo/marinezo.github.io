@@ -421,7 +421,7 @@ font-weight: bold;
       color: #ffffff;
       float: right;
       font-size: 30px;
-font-family: 'Raleway', sans-serif;
+      font-family: 'Raleway', sans-serif;
       cursor: pointer;
     }
       .close:hover,
@@ -460,7 +460,7 @@ font-family: 'Raleway', sans-serif;
     .mid-modal {
       position: relative;
       display: grid;
-    	grid-template-columns: 40% 60%;
+    	grid-template-columns: 340px 450px;
       grid-column-gap: 13px;
       color: rgba(255, 255, 255, 1);
       font-family: arial;
