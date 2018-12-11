@@ -4,7 +4,9 @@ body {
   background : -moz-linear-gradient(50% 0% -90deg,rgba(255, 255, 255, 1) 19.06%,rgba(246, 250, 250, 1) 100%);
   background : -webkit-linear-gradient(-90deg, rgba(255, 255, 255, 1) 19.06%, rgba(246, 250, 250, 1) 100%);
   overflow: auto;
+  line-height: 1.2;
 }
+
 /*header*/
 .header {
   position: relative;
