@@ -103,7 +103,7 @@ body {
   align-content: center;
   margin:0 auto;
 	width: 94vw;
-	height: 96vh;
+	height: 84vh;
 	max-height: 900px;
 	max-width: 830px;
   border: solid;
@@ -115,7 +115,7 @@ body {
 
 .layout {
 	width: 94vw;
-	height: 96vh;
+	height: 84vh;
 	max-height: 900px;
 	max-width: 830px;
   border-color:  rgba(6, 71, 255, 1);
