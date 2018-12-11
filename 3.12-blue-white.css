@@ -540,7 +540,7 @@ font-weight: bold;
     }
 .slideshow-container {
 widht: 450px;
-grid-template-columns: 50px 350px;
+grid-template-columns: 50px 400px;
 margin-top: 0 auto;
 }
 
