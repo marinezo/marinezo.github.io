@@ -238,9 +238,9 @@ body {
   .stick-border {
     margin-left: 25px;
     width: 678px;
-    height: 2px;
+    height: 5px;
     border-bottom: solid;
-    border-width: 5px;
+    border-width: 1px;
     border-color:  rgba(6, 71, 255, 1);
     background: rgba(255, 255, 255, 1);
   }
