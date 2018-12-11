@@ -481,7 +481,11 @@ font-family: 'Raleway', sans-serif;
         font-family;
         }
 
-
+	.modal-image {
+		height: 100%;
+		width: 100%;
+		border: solid 1px #ffffff:
+	}
 
       .end-modal {
         margin-left: 20px;
