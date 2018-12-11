@@ -102,7 +102,7 @@ body {
   margin:0 auto;
 	width: 94vw;
 	height: 80vh;
-	max-height: 790px;
+	max-height: 810px;
 	max-width: 830px;
   border: solid;
 	border-color:  rgba(6, 71, 255, 1);
@@ -114,7 +114,7 @@ body {
 .layout {
 	width: 94vw;
 	height: 83vh;
-	max-height: 780px;
+	max-height: 810px;
 	max-width: 830px;
   border-color:  rgba(6, 71, 255, 1);
 	display: grid;
@@ -126,7 +126,7 @@ body {
 
 .side {
   width: 100px;
-  height: 790px;
+  height: 810px;
   position: sticky;
   left: px;
   z-index: 1;
