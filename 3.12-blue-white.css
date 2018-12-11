@@ -4,7 +4,7 @@ body {
   background : -moz-linear-gradient(50% 0% -90deg,rgba(255, 255, 255, 1) 19.06%,rgba(246, 250, 250, 1) 100%);
   background : -webkit-linear-gradient(-90deg, rgba(255, 255, 255, 1) 19.06%, rgba(246, 250, 250, 1) 100%);
   overflow: auto;
-  line-height: 1.2;
+  line-height: 1.6;
 }
 
 /*header*/
@@ -104,7 +104,7 @@ body {
   margin:0 auto;
 	width: 94vw;
 	height: 80vh;
-	max-height: 810px;
+	max-height: 900px;
 	max-width: 830px;
   border: solid;
 	border-color:  rgba(6, 71, 255, 1);
@@ -116,7 +116,7 @@ body {
 .layout {
 	width: 94vw;
 	height: 83vh;
-	max-height: 810px;
+	max-height: 900px;
 	max-width: 830px;
   border-color:  rgba(6, 71, 255, 1);
 	display: grid;
@@ -128,7 +128,7 @@ body {
 
 .side {
   width: 100px;
-  height: 810px;
+  height: 900px;
   position: sticky;
   left: px;
   z-index: 1;
@@ -540,6 +540,8 @@ font-family: 'Raleway', sans-serif;
       height: 220px;
       margin: 0 auto;
       left: 10px;
+     grid-template-columns: 50px 350px;
+
     }
 
     .slide-container {
