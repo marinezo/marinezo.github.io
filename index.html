@@ -71,7 +71,7 @@
         <div class="div">
           <div class="box match">
               <input class="box match play" type="button" value=" ►"  onclick="play('audio1')">
-              <button onclick="document.getElementById('id03').style.display='block'" class="myBtn">see more</button>
+              <button onclick="document.getElementById('id01').style.display='block'" class="myBtn">see more</button>
           </div>
           <div class="box match">
               <input class="box match play" type="button" value=" ►"  onclick="play('audio1')">
@@ -80,7 +80,7 @@
           <div class="box"></div>
           <div class="box match">
             <input class="box match play" type="button" value=" ►"  onclick="play('audio1')">
-            <button onclick="document.getElementById('id02').style.display='block'" class="myBtn">see more</button>
+            <button onclick="document.getElementById('id03').style.display='block'" class="myBtn">see more</button>
           </div>
           <div class="box"></div>
           <div class="box"></div>
@@ -90,12 +90,12 @@
           <div class="box"></div>
           <div class="box match">
               <input class="box match play" type="button" value="►"  onclick="play('audio2')">
-              <button onclick="document.getElementById('id03').style.display='block'" class="myBtn">see more</button>
+              <button onclick="document.getElementById('id04').style.display='block'" class="myBtn">see more</button>
           </div>
           <div class="box"></div>
           <div class="box match">
             <input class="box match play" type="button" value="►"  onclick="play('audio2')">
-            <button onclick="document.getElementById('id03').style.display='block'" class="myBtn">see more</button>
+            <button onclick="document.getElementById('id05').style.display='block'" class="myBtn">see more</button>
           </div>
           <div class="box"></div>
         </div>
@@ -172,7 +172,7 @@
 
 
       <//pop-ups>
-      <div id="id03" class="modal">
+      <div id="id01" class="modal">
         <div class="modal-content">
 
           <header class="header-modal">
@@ -185,7 +185,7 @@
             <div>
               <div class="explain-box">
               <img class="modal-icon side" src="img/final-icons/modal/icon-sound.svg" />
-               <p><B>sound: pitch shift</b><br>
+               <p><B>sound: pitch change</b><br>
                 Pitch shift is a sound variation in which the <a href="https://en.wikipedia.org/wiki/Pitch_(music)" target="_blank">pitch</a> of a sound (quantified as <a href="https://en.wikipedia.org/wiki/frequency" target="_blank">frequency</a>, unit: Hz) is raised or lowered.</p></div>
               <div class="explain-box">
                <img class="modal-icon side" src="img/final-icons/modal/icon-intr.svg" />
@@ -200,19 +200,55 @@
               <div class="slideshow-contain">
                 <div><img class="modal-icon side" src="img/final-icons/modal/icon-prdct.svg" /></div>
             <div class="slideshow">
+
+                <div class="slide-container mySlides">
+                  <div>
+                    <b>example products</b><br>turning a device on-off
+                  </div>
+                  <img src="img/slideshow/remote.jpg" style="width:100%">
+             </div>
+              </div>
+            </div>
+          </div>
+
+        <p class="end-modal"><B>NOTICE!</b> make sure the chosen pitches lay within the average audible <a href="https://en.wikipedia.org/wiki/Auditory_system" target="_blank">frequency range</a> for your user age group.</p>
+        </div>
+      </div>
+
+       <div id="id02" class="modal">
+        <div class="modal-content">
+
+          <header class="header-modal">
+              <img class="modal-icon" src="img/final-icons/modal/icon-pitch.svg" />
+              <h2 class="modal-title">PITCH CHANGE&nbsp;&nbsp;&nbsp;<medium>x</medium>&nbsp;&nbsp;&nbsp;UP - DOWN</h2>
+              <span onclick="document.getElementById('id03').style.display='none'" class="close">&times;</span>
+          </header>
+
+          <div class="mid-modal">
+            <div>
+              <div class="explain-box">
+              <img class="modal-icon side" src="img/final-icons/modal/icon-sound.svg" />
+               <p><B>sound: pitch change</b><br>
+                Pitch shift is a sound variation in which the <a href="https://en.wikipedia.org/wiki/Pitch_(music)" target="_blank">pitch</a> of a sound (quantified as <a href="https://en.wikipedia.org/wiki/frequency" target="_blank">frequency</a>, unit: Hz) is raised or lowered.</p></div>
+              <div class="explain-box">
+               <img class="modal-icon side" src="img/final-icons/modal/icon-intr.svg" />
+               <p><b>interaction: up\down</b><br>
+                up-down interaction refers to the action of adding to or subtracting from the value with a certain function.<p></div>
+              <div class="explain-box">
+              <img class="modal-icon side" src="img/final-icons/modal/icon-parameters.svg" />
+               <p><b>main parameters</b><br>
+                start and end pitch, pitch range, addition\substraction value<p></div>
+
+              </div>
+              <div class="slideshow-contain">
+                <div><img class="modal-icon side" src="img/final-icons/modal/icon-prdct.svg" /></div>
+            <div class="slideshow">
               <div class="w3-content slide-container">
                 <div class="slide-container mySlides">
                   <div>
                   <b>example products</b><br>pillbox: counting pills
                   </div>
                   <img src="img/slideshow/pillbox.jpg" style="width:100%">
-                </div>
-
-                <div class="slide-container mySlides">
-                  <div>
-                  <b>example products</b><br>plant pot: indicating if water level is sufficient (full) or not (empty)
-                  </div>
-                  <img src="img/slideshow/plant.jpg" style="width:100%">
                 </div>
 
                 <div class="slide-container mySlides">
@@ -229,7 +265,7 @@
             </div>
           </div>
 
-        <p class="end-modal"><B>NOTICE!</b> make sure the chosen pitches lay within the average audible <a href="https://en.wikipedia.org/wiki/Auditory_system" target="_blank">frequency range</a> for your user age group.</p>
+        <p class="end-modal"><B>NOTICE!</b> make sure the chosen pitches lay within the average audible <a href="https://en.wikipedia.org/wiki/Auditory_system" target="_blank">frequency range</a> for your user age group.<br>Set a standard addition\substraction value to create a consistent interaction.</p>
         </div>
       </div>
 
