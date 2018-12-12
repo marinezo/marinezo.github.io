@@ -121,7 +121,7 @@ body {
  	 border-color:  rgba(6, 71, 255, 1);
 	display: grid;
 	grid-template-columns: 100px 700px;
-	margin-top: .3vh;
+	margin-top: .5vh;
   	overflow: auto;
 
 }
