@@ -464,14 +464,14 @@ font-weight: bold;
     .mid-modal {
       position: relative;
       display: grid;
-    	grid-template-columns: 340px 450px;
+    	grid-template-columns: 40% 60%;
       grid-column-gap: 13px;
       color: rgba(255, 255, 255, 1);
       font-family: arial;
       font-size: 13px;
     }
 
-  .explain-box {
+      .explain-box {
         display: grid;
         grid-template-columns: 50px 270px;
         width: 320px;
