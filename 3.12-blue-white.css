@@ -471,18 +471,19 @@ font-weight: bold;
       font-size: 13px;
     }
 
-      .explain-box {
+  .explain-box {
         display: grid;
         grid-template-columns: 50px 270px;
-        height: 67px;
-        width: 340px;
+        width: 320px;
         padding-bottom: 30px;
         }
 
-    .sound {
+        .sound-s {
           height: 110px;
         }
-
+        .sound-L {
+          height: 135px;
+        }
         .intr {
           height: 55px;
         }
@@ -493,10 +494,12 @@ font-weight: bold;
         font-family;
         }
 
+
+
       .end-modal {
         margin-left: 20px;
         padding-top: 5px;
-	padding-bottom: 5px;
+        padding-bottom: 5px;
         width: 700px;
         border: solid 1px rgba(255, 255, 255, 1);
         border-radius: 20px;
@@ -506,6 +509,8 @@ font-weight: bold;
         font-size: 13px;
         text-align: left;
       }
+
+
 
 /*scrollbar*/
 ::-webkit-scrollbar {
@@ -589,4 +594,3 @@ font-weight: bold;
               background-image: url('img/slideshow/remote.jpg');
               background-repeat: no-repeat;
                 }
-
