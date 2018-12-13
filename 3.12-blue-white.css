@@ -550,39 +550,43 @@ font-weight: bold;
   grid-template-columns: 50px 350px;
 }
 
+
 .modal-img {
-  width: 300px;
-  height: 220px;
-  }
-  .n-1 {
-    background-image: url('img/slideshow/pillbox.png');
-    background-repeat: no-repeat;
-  }
-    .n-1:hover {
-      background-image: url('img/slideshow/remote.jpg');
-      background-repeat: no-repeat;
-    }
-  .n-2 {
-    background-image: url('img/slideshow/wash.png');
-    background-repeat: no-repeat;
-    }
-    .n-2:hover {
-      background-image: url('img/slideshow/wash.png');
-      background-repeat: no-repeat;
-      }
-  .n-3 {
-    background-image: url('img/slideshow/remote.jpg');
-    background-repeat: no-repeat;
-      }
-      .n-3:hover {
-        background-image: url('img/slideshow/remote.jpg');
-        background-repeat: no-repeat;
-        }
-    .n-4 {
-          background-image: url('img/slideshow/plant.png');
-          background-repeat: no-repeat;
-        }
-        .n-4:hover {
-            background-image: url('img/slideshow/plant.png');
-            background-repeat: no-repeat;
-          }
+    height: 220px;
+    width: 400px;
+    background-size: cover;
+}
+
+  .pill {
+   background-image: url('img/slideshow/pillbox.png');
+   background-repeat: no-repeat;
+
+ }
+   .pill:hover {
+     background-image: url('img/slideshow/PILLBOX.png');
+     background-repeat: no-repeat;
+   }
+ .wash {
+   background-image: url('img/slideshow/wash.png');
+   background-repeat: no-repeat;
+   }
+   .n-2:hover {
+     background-image: url('img/slideshow/wash.png');
+     background-repeat: no-repeat;
+     }
+ .n-3 {
+   background-image: url('img/slideshow/remote.jpg');
+   background-repeat: no-repeat;
+     }
+     .n-3:hover {
+       background-image: url('img/slideshow/remote.jpg');
+       background-repeat: no-repeat;
+       }
+   .plant {
+         background-image: url('img/slideshow/plant.png');
+         background-repeat: no-repeat;
+       }
+       .plant:hover {
+           background-image: url('img/slideshow/plant.png');
+           background-repeat: no-repeat;
+         }
