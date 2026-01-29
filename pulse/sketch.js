@@ -1,20 +1,15 @@
 // ── CONFIG ──────────────────────────────────────────────────────
 var WATCH_R      = 200;
-var BLOB_COUNT   = 14;
-var BLOB_MIN_R   = 14;
-var BLOB_MAX_R   = 30;
-var DAMPING      = 0.97;      // high damping = thick fluid resistance
-var REPULSION    = 0.15;      // gentle, realistic nudge
-var CONTAIN_K    = 0.04;
-var GRAVITY      = 0.08;      // snow-globe downward drift
-var PULSE_FORCE  = 4;
+var LEAF_COUNT   = 24;
+var DAMPING      = 0.97;
+var GRAVITY      = 0.04;      // gentle fall
+var PULSE_FORCE  = 3;
 var ATTACK_MS    = 300;
 var DECAY_MS     = 1200;
-var WOBBLE_NODES = 8;         // perimeter deformation points per blob
-var WOBBLE_AMP   = 0.12;      // how blobby (fraction of radius)
 
 // ── STATE ───────────────────────────────────────────────────────
-var blobs = [];
+var leaves = [];
+var branches = [];
 var pulseEnvelope = 0;
 var pulseTime     = -9999;
 var lastPulseMs   = 0;
@@ -22,8 +17,62 @@ var bpm           = 0;
 var bpmHistory    = [];
 var indicatorFill = 0;
 var cx, cy;
+var dragging      = null;     // index of leaf being dragged
 
-// ── SIMULATED PULSE (press SPACE or tap) ────────────────────────
+// ── SAKURA LEAF CLASS ───────────────────────────────────────────
+function createLeaf(x, y, size, ang) {
+  return {
+    x: x,
+    y: y,
+    vx: 0,
+    vy: 0,
+    size: size,
+    angle: ang,             // rotation of the petal
+    spin: random(-0.005, 0.005), // slow idle spin
+    noiseSeed: random(1000),
+    attached: true          // still on branch initially
+  };
+}
+
+// ── BRANCH STRUCTURE ────────────────────────────────────────────
+// A branch is a series of points forming a curved line
+function buildBranch(x0, y0, ang, len, depth, maxDepth) {
+  if (depth > maxDepth) return;
+  var pts = [];
+  var segments = floor(len / 6);
+  var px = x0;
+  var py = y0;
+  for (var i = 0; i <= segments; i++) {
+    pts.push({ x: px, y: py });
+    px += cos(ang) * 6;
+    py += sin(ang) * 6;
+    ang += random(-0.15, 0.15); // slight organic curve
+  }
+  branches.push(pts);
+
+  // end of branch: place a leaf
+  if (depth >= maxDepth - 1) {
+    leaves.push(createLeaf(px, py, random(6, 12), ang + random(-0.5, 0.5)));
+  }
+
+  // sub-branches
+  if (depth < maxDepth) {
+    var branchAt = floor(segments * random(0.4, 0.7));
+    var bp = pts[min(branchAt, pts.length - 1)];
+    var forkAng = ang + random(0.3, 0.8) * (random() > 0.5 ? 1 : -1);
+    buildBranch(bp.x, bp.y, forkAng, len * random(0.5, 0.75), depth + 1, maxDepth);
+
+    // sometimes a second fork
+    if (random() > 0.4) {
+      var branchAt2 = floor(segments * random(0.5, 0.85));
+      var bp2 = pts[min(branchAt2, pts.length - 1)];
+      var forkAng2 = ang + random(0.3, 0.7) * (random() > 0.5 ? 1 : -1);
+      buildBranch(bp2.x, bp2.y, forkAng2, len * random(0.4, 0.65), depth + 1, maxDepth);
+    }
+  }
+}
+
+// ── PULSE ───────────────────────────────────────────────────────
 function registerPulse() {
   var now = millis();
   if (lastPulseMs > 0) {
@@ -42,11 +91,16 @@ function registerPulse() {
   pulseTime   = now;
   indicatorFill = 1;
 
-  // gentle upward lift like shaking the snow globe
-  for (var i = 0; i < blobs.length; i++) {
-    var b = blobs[i];
-    b.vx += random(-1.5, 1.5);
-    b.vy += random(-PULSE_FORCE, -PULSE_FORCE * 0.3);
+  // shake leaves: detach some, give all a gentle push
+  for (var i = 0; i < leaves.length; i++) {
+    var lf = leaves[i];
+    if (lf.attached && random() > 0.6) {
+      lf.attached = false;
+    }
+    if (!lf.attached) {
+      lf.vx += random(-1.2, 1.2);
+      lf.vy += random(-PULSE_FORCE, -PULSE_FORCE * 0.2);
+    }
   }
 }
 
@@ -57,7 +111,35 @@ function keyPressed() {
 }
 
 function mousePressed() {
+  // check if clicking a leaf (for dragging)
+  var mx = mouseX - cx;
+  var my = mouseY - cy;
+  for (var i = leaves.length - 1; i >= 0; i--) {
+    var lf = leaves[i];
+    var dx = mx - lf.x;
+    var dy = my - lf.y;
+    if (sqrt(dx * dx + dy * dy) < lf.size + 4) {
+      dragging = i;
+      lf.attached = false;
+      return;
+    }
+  }
+  // no leaf hit — register pulse
   registerPulse();
+}
+
+function mouseDragged() {
+  if (dragging !== null) {
+    var lf = leaves[dragging];
+    lf.x = mouseX - cx;
+    lf.y = mouseY - cy;
+    lf.vx = 0;
+    lf.vy = 0;
+  }
+}
+
+function mouseReleased() {
+  dragging = null;
 }
 
 // ── SETUP ───────────────────────────────────────────────────────
@@ -66,23 +148,22 @@ function setup() {
   cx = width / 2;
   cy = height / 2;
 
-  for (var i = 0; i < BLOB_COUNT; i++) {
-    var r = random(BLOB_MIN_R, BLOB_MAX_R);
-    var a = random(TWO_PI);
-    var d = random(0, WATCH_R - r - 20);
-    // each blob has wobble offsets for organic shape
-    var offsets = [];
-    for (var n = 0; n < WOBBLE_NODES; n++) {
-      offsets.push(random(1000));  // noise seed per node
+  // build branch tree starting from lower-left, growing up-right
+  buildBranch(-WATCH_R * 0.6, WATCH_R * 0.3, -PI / 4 + random(-0.2, 0.2), WATCH_R * 0.8, 0, 4);
+
+  // add extra leaves along branches
+  for (var i = 0; i < branches.length; i++) {
+    var br = branches[i];
+    for (var j = 0; j < br.length; j++) {
+      if (random() > 0.82) {
+        leaves.push(createLeaf(
+          br[j].x + random(-4, 4),
+          br[j].y + random(-4, 4),
+          random(5, 10),
+          random(TWO_PI)
+        ));
+      }
     }
-    blobs.push({
-      x: cos(a) * d,
-      y: sin(a) * d,
-      vx: 0,
-      vy: 0,
-      r: r,
-      offsets: offsets
-    });
   }
 }
 
@@ -91,9 +172,9 @@ function draw() {
   background(255);
 
   var now = millis();
-  var t = now * 0.001; // time in seconds for wobble
+  var t = now * 0.001;
 
-  // envelope (attack / decay)
+  // envelope
   var elapsed = now - pulseTime;
   if (elapsed < ATTACK_MS) {
     pulseEnvelope = elapsed / ATTACK_MS;
@@ -101,87 +182,100 @@ function draw() {
     pulseEnvelope = max(0, 1 - (elapsed - ATTACK_MS) / DECAY_MS);
   }
 
-  // indicator decay
   indicatorFill = max(0, indicatorFill - 0.03);
 
-  // ── PHYSICS ─────────────────────────────────────────────────
-  for (var i = 0; i < blobs.length; i++) {
-    var b = blobs[i];
+  // ── LEAF PHYSICS ──────────────────────────────────────────
+  for (var i = 0; i < leaves.length; i++) {
+    if (i === dragging) continue;
+    var lf = leaves[i];
+    if (lf.attached) continue;
 
-    // gravity — snow-globe settling
-    b.vy += GRAVITY;
+    // gravity
+    lf.vy += GRAVITY;
 
-    // slight horizontal drift (like floating in water)
-    b.vx += (noise(i * 100 + t * 0.3) - 0.5) * 0.04;
+    // sideways drift (fluttering)
+    lf.vx += (noise(lf.noiseSeed + t * 0.5) - 0.5) * 0.08;
 
-    // contain inside circle (slide along bowl)
-    var dist = sqrt(b.x * b.x + b.y * b.y);
-    var maxD = WATCH_R - b.r - 4;
+    // contain inside watch circle
+    var dist = sqrt(lf.x * lf.x + lf.y * lf.y);
+    var maxD = WATCH_R - lf.size - 2;
     if (dist > maxD && dist > 0.1) {
-      var nx = b.x / dist;
-      var ny = b.y / dist;
+      var nx = lf.x / dist;
+      var ny = lf.y / dist;
       var over = dist - maxD;
-      // push back in
-      b.vx -= nx * over * CONTAIN_K;
-      b.vy -= ny * over * CONTAIN_K;
-      // friction along the wall
-      b.vx *= 0.95;
-      b.vy *= 0.95;
+      lf.vx -= nx * over * 0.05;
+      lf.vy -= ny * over * 0.05;
+      lf.vx *= 0.9;
+      lf.vy *= 0.9;
     }
 
-    // blob-blob: soft realistic contact
-    for (var j = i + 1; j < blobs.length; j++) {
-      var o = blobs[j];
-      var dx = b.x - o.x;
-      var dy = b.y - o.y;
+    // leaf-leaf soft contact
+    for (var j = i + 1; j < leaves.length; j++) {
+      if (j === dragging) continue;
+      var o = leaves[j];
+      if (o.attached) continue;
+      var dx = lf.x - o.x;
+      var dy = lf.y - o.y;
       var dd = sqrt(dx * dx + dy * dy);
-      var minD = b.r + o.r;
+      var minD = lf.size + o.size;
       if (dd < minD && dd > 0.1) {
-        // proportional to overlap, shared by mass (radius)
         var overlap = minD - dd;
         var ux = dx / dd;
         var uy = dy / dd;
-        var totalR = b.r + o.r;
-        var ratioB = o.r / totalR; // lighter blob gets pushed more
-        var ratioO = b.r / totalR;
-        var push = overlap * REPULSION;
-        b.vx += ux * push * ratioB;
-        b.vy += uy * push * ratioB;
-        o.vx -= ux * push * ratioO;
-        o.vy -= uy * push * ratioO;
+        var f = overlap * 0.08;
+        lf.vx += ux * f;
+        lf.vy += uy * f;
+        o.vx  -= ux * f;
+        o.vy  -= uy * f;
       }
     }
 
-    // integrate with heavy damping (viscous fluid)
-    b.vx *= DAMPING;
-    b.vy *= DAMPING;
-    b.x  += b.vx;
-    b.y  += b.vy;
+    lf.vx *= DAMPING;
+    lf.vy *= DAMPING;
+    lf.x  += lf.vx;
+    lf.y  += lf.vy;
+    lf.angle += lf.spin;
   }
 
   translate(cx, cy);
 
-  // ── WATCH CIRCLE ────────────────────────────────────────────
+  // ── WATCH CIRCLE ──────────────────────────────────────────
   noFill();
   stroke(0);
   strokeWeight(1);
   ellipse(0, 0, WATCH_R * 2, WATCH_R * 2);
 
-  // clip inside circle
+  // clip
   drawingContext.save();
   drawingContext.beginPath();
   drawingContext.arc(0, 0, WATCH_R - 1, 0, TWO_PI);
   drawingContext.clip();
 
-  // ── BLOBS (blobby organic shapes) ─────────────────────────
+  // ── BRANCHES ──────────────────────────────────────────────
   noFill();
   stroke(0);
   strokeWeight(1);
-  for (var i = 0; i < blobs.length; i++) {
-    drawBlob(blobs[i], t);
+  for (var i = 0; i < branches.length; i++) {
+    var br = branches[i];
+    beginShape();
+    // first point repeated for curveVertex
+    curveVertex(br[0].x, br[0].y);
+    for (var j = 0; j < br.length; j++) {
+      curveVertex(br[j].x, br[j].y);
+    }
+    curveVertex(br[br.length - 1].x, br[br.length - 1].y);
+    endShape();
   }
 
-  // ── HEART + BPM (bottom of circle) ─────────────────────────
+  // ── LEAVES ────────────────────────────────────────────────
+  noFill();
+  stroke(0);
+  strokeWeight(1);
+  for (var i = 0; i < leaves.length; i++) {
+    drawSakuraLeaf(leaves[i], t);
+  }
+
+  // ── HEART + BPM ───────────────────────────────────────────
   var heartY = WATCH_R * 0.62;
   drawPixelHeart(-24, heartY, 10);
 
@@ -195,10 +289,9 @@ function draw() {
 
   drawingContext.restore();
 
-  // reset translation for indicator + instructions
   translate(-cx, -cy);
 
-  // ── INDICATOR DOT (top-left, outside circle) ────────────────
+  // ── INDICATOR DOT ─────────────────────────────────────────
   var indX = cx - WATCH_R - 30;
   var indY = cy - WATCH_R - 30;
   stroke(0);
@@ -210,45 +303,95 @@ function draw() {
   }
   ellipse(indX, indY, 18, 18);
 
-  // ── INSTRUCTIONS ────────────────────────────────────────────
+  // ── INSTRUCTIONS ──────────────────────────────────────────
   noStroke();
   fill(180);
   textSize(10);
   textFont('monospace');
   textAlign(CENTER, BOTTOM);
-  text('SPACE / TAP to pulse', width / 2, height - 16);
+  text('SPACE / TAP to pulse  |  drag leaves', width / 2, height - 16);
 }
 
-// ── BLOBBY SHAPE (perlin-deformed circle) ───────────────────────
-function drawBlob(b, t) {
-  var pts = 36; // smooth-ish perimeter
+// ── SAKURA LEAF (5-petal contour) ───────────────────────────────
+function drawSakuraLeaf(lf, t) {
+  var s = lf.size;
+  var px = lf.x;
+  var py = lf.y;
+  var a = lf.angle;
+
+  // slight wobble when falling
+  if (!lf.attached) {
+    a += sin(t * 2 + lf.noiseSeed) * 0.15;
+  }
+
   noFill();
   stroke(0);
   strokeWeight(1);
+
+  // draw 5 petals arranged in a circle
+  for (var p = 0; p < 5; p++) {
+    var petalAng = a + TWO_PI * p / 5;
+    var cx2 = px + cos(petalAng) * s * 0.35;
+    var cy2 = py + sin(petalAng) * s * 0.35;
+    drawPetal(cx2, cy2, s, petalAng);
+  }
+
+  // small centre dot
+  noStroke();
+  fill(0);
+  var dotS = max(1, floor(s * 0.15));
+  rect(round(px) - floor(dotS/2), round(py) - floor(dotS/2), dotS, dotS);
+}
+
+// ── SINGLE PETAL (teardrop contour via bezier) ──────────────────
+function drawPetal(px, py, size, ang) {
+  var len = size * 0.55;    // petal length from centre
+  var w   = size * 0.28;    // petal width
+
+  // tip of petal
+  var tipX = px + cos(ang) * len;
+  var tipY = py + sin(ang) * len;
+
+  // perpendicular for width
+  var perpX = cos(ang + HALF_PI);
+  var perpY = sin(ang + HALF_PI);
+
+  // side control points
+  var midFrac = 0.45;
+  var midX = px + cos(ang) * len * midFrac;
+  var midY = py + sin(ang) * len * midFrac;
+
+  var c1x = midX + perpX * w;
+  var c1y = midY + perpY * w;
+  var c2x = midX - perpX * w;
+  var c2y = midY - perpY * w;
+
+  // notch at tip (sakura characteristic)
+  var notchDepth = len * 0.15;
+  var notchX = tipX - cos(ang) * notchDepth;
+  var notchY = tipY - sin(ang) * notchDepth;
+
+  noFill();
+  stroke(0);
+  strokeWeight(1);
+
+  // left side
   beginShape();
-  for (var k = 0; k < pts; k++) {
-    var ang = TWO_PI * k / pts;
-    // blend several noise octaves per node for organic wobble
-    var nIdx = floor(k / (pts / WOBBLE_NODES));
-    var nVal = noise(b.offsets[nIdx % WOBBLE_NODES] + t * 0.8, ang * 0.5);
-    var deform = 1 + (nVal - 0.5) * WOBBLE_AMP * 2;
-    var rr = b.r * deform;
-    // pixel-snap for chunky aesthetic
-    var sx = round(b.x + cos(ang) * rr);
-    var sy = round(b.y + sin(ang) * rr);
-    curveVertex(sx, sy);
-  }
-  // close smoothly: repeat first 3 control points
-  for (var k = 0; k < 3; k++) {
-    var ang = TWO_PI * k / pts;
-    var nIdx = floor(k / (pts / WOBBLE_NODES));
-    var nVal = noise(b.offsets[nIdx % WOBBLE_NODES] + t * 0.8, ang * 0.5);
-    var deform = 1 + (nVal - 0.5) * WOBBLE_AMP * 2;
-    var rr = b.r * deform;
-    var sx = round(b.x + cos(ang) * rr);
-    var sy = round(b.y + sin(ang) * rr);
-    curveVertex(sx, sy);
-  }
+  vertex(round(px), round(py));
+  quadraticVertex(round(c1x), round(c1y), round(tipX + perpX * 1.5), round(tipY + perpY * 1.5));
+  endShape();
+
+  // notch
+  beginShape();
+  vertex(round(tipX + perpX * 1.5), round(tipY + perpY * 1.5));
+  vertex(round(notchX), round(notchY));
+  vertex(round(tipX - perpX * 1.5), round(tipY - perpY * 1.5));
+  endShape();
+
+  // right side
+  beginShape();
+  vertex(round(tipX - perpX * 1.5), round(tipY - perpY * 1.5));
+  quadraticVertex(round(c2x), round(c2y), round(px), round(py));
   endShape();
 }
 
