@@ -159,7 +159,6 @@ function draw() {
     b.y  += b.vy;
   }
 
-  push();
   translate(cx, cy);
 
   // ── WATCH CIRCLE ────────────────────────────────────────────
@@ -195,7 +194,9 @@ function draw() {
   text(bpmStr, -4, heartY);
 
   drawingContext.restore();
-  pop();
+
+  // reset translation for indicator + instructions
+  translate(-cx, -cy);
 
   // ── INDICATOR DOT (top-left, outside circle) ────────────────
   var indX = cx - WATCH_R - 30;
