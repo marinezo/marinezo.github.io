@@ -1,14 +1,17 @@
 // ── CONFIG ──────────────────────────────────────────────────────
 var WATCH_R      = 200;
 var BLOB_COUNT   = 14;
-var BLOB_MIN_R   = 12;
-var BLOB_MAX_R   = 28;
-var DAMPING      = 0.92;
-var REPULSION    = 1.8;
-var CONTAIN_K    = 0.06;
-var PULSE_FORCE  = 6;
+var BLOB_MIN_R   = 14;
+var BLOB_MAX_R   = 30;
+var DAMPING      = 0.97;      // high damping = thick fluid resistance
+var REPULSION    = 0.15;      // gentle, realistic nudge
+var CONTAIN_K    = 0.04;
+var GRAVITY      = 0.08;      // snow-globe downward drift
+var PULSE_FORCE  = 4;
 var ATTACK_MS    = 300;
 var DECAY_MS     = 1200;
+var WOBBLE_NODES = 8;         // perimeter deformation points per blob
+var WOBBLE_AMP   = 0.12;      // how blobby (fraction of radius)
 
 // ── STATE ───────────────────────────────────────────────────────
 var blobs = [];
@@ -39,12 +42,11 @@ function registerPulse() {
   pulseTime   = now;
   indicatorFill = 1;
 
+  // gentle upward lift like shaking the snow globe
   for (var i = 0; i < blobs.length; i++) {
     var b = blobs[i];
-    var ang = atan2(b.y, b.x) + random(-0.4, 0.4);
-    var mag = PULSE_FORCE * random(0.6, 1);
-    b.vx += cos(ang) * mag;
-    b.vy += sin(ang) * mag;
+    b.vx += random(-1.5, 1.5);
+    b.vy += random(-PULSE_FORCE, -PULSE_FORCE * 0.3);
   }
 }
 
@@ -68,12 +70,18 @@ function setup() {
     var r = random(BLOB_MIN_R, BLOB_MAX_R);
     var a = random(TWO_PI);
     var d = random(0, WATCH_R - r - 20);
+    // each blob has wobble offsets for organic shape
+    var offsets = [];
+    for (var n = 0; n < WOBBLE_NODES; n++) {
+      offsets.push(random(1000));  // noise seed per node
+    }
     blobs.push({
       x: cos(a) * d,
       y: sin(a) * d,
-      vx: random(-0.3, 0.3),
-      vy: random(-0.3, 0.3),
-      r: r
+      vx: 0,
+      vy: 0,
+      r: r,
+      offsets: offsets
     });
   }
 }
@@ -83,6 +91,7 @@ function draw() {
   background(255);
 
   var now = millis();
+  var t = now * 0.001; // time in seconds for wobble
 
   // envelope (attack / decay)
   var elapsed = now - pulseTime;
@@ -99,37 +108,51 @@ function draw() {
   for (var i = 0; i < blobs.length; i++) {
     var b = blobs[i];
 
-    // contain inside circle
+    // gravity — snow-globe settling
+    b.vy += GRAVITY;
+
+    // slight horizontal drift (like floating in water)
+    b.vx += (noise(i * 100 + t * 0.3) - 0.5) * 0.04;
+
+    // contain inside circle (slide along bowl)
     var dist = sqrt(b.x * b.x + b.y * b.y);
     var maxD = WATCH_R - b.r - 4;
-    if (dist > maxD) {
+    if (dist > maxD && dist > 0.1) {
       var nx = b.x / dist;
       var ny = b.y / dist;
       var over = dist - maxD;
+      // push back in
       b.vx -= nx * over * CONTAIN_K;
       b.vy -= ny * over * CONTAIN_K;
+      // friction along the wall
+      b.vx *= 0.95;
+      b.vy *= 0.95;
     }
 
-    // blob-blob repulsion
-    for (var j = 0; j < blobs.length; j++) {
-      if (j === i) continue;
+    // blob-blob: soft realistic contact
+    for (var j = i + 1; j < blobs.length; j++) {
       var o = blobs[j];
       var dx = b.x - o.x;
       var dy = b.y - o.y;
       var dd = sqrt(dx * dx + dy * dy);
-      var minD = b.r + o.r + 2;
+      var minD = b.r + o.r;
       if (dd < minD && dd > 0.1) {
-        var f = (minD - dd) / dd * REPULSION;
-        b.vx += dx * f * 0.5;
-        b.vy += dy * f * 0.5;
+        // proportional to overlap, shared by mass (radius)
+        var overlap = minD - dd;
+        var ux = dx / dd;
+        var uy = dy / dd;
+        var totalR = b.r + o.r;
+        var ratioB = o.r / totalR; // lighter blob gets pushed more
+        var ratioO = b.r / totalR;
+        var push = overlap * REPULSION;
+        b.vx += ux * push * ratioB;
+        b.vy += uy * push * ratioB;
+        o.vx -= ux * push * ratioO;
+        o.vy -= uy * push * ratioO;
       }
     }
 
-    // gentle gravity toward centre
-    b.vx -= b.x * 0.002;
-    b.vy -= b.y * 0.002;
-
-    // integrate
+    // integrate with heavy damping (viscous fluid)
     b.vx *= DAMPING;
     b.vy *= DAMPING;
     b.x  += b.vx;
@@ -151,12 +174,12 @@ function draw() {
   drawingContext.arc(0, 0, WATCH_R - 1, 0, TWO_PI);
   drawingContext.clip();
 
-  // ── BLOBS ───────────────────────────────────────────────────
+  // ── BLOBS (blobby organic shapes) ─────────────────────────
   noFill();
   stroke(0);
   strokeWeight(1);
   for (var i = 0; i < blobs.length; i++) {
-    drawPixelCircle(blobs[i].x, blobs[i].y, blobs[i].r);
+    drawBlob(blobs[i], t);
   }
 
   // ── HEART + BPM (bottom of circle) ─────────────────────────
@@ -195,19 +218,37 @@ function draw() {
   text('SPACE / TAP to pulse', width / 2, height - 16);
 }
 
-// ── PIXEL-STYLE CIRCLE (aliased, chunky) ────────────────────────
-function drawPixelCircle(px, py, r) {
-  var step = max(2, floor(r / 6));
+// ── BLOBBY SHAPE (perlin-deformed circle) ───────────────────────
+function drawBlob(b, t) {
+  var pts = 36; // smooth-ish perimeter
   noFill();
   stroke(0);
   strokeWeight(1);
   beginShape();
-  for (var a = 0; a < TWO_PI; a += step / r) {
-    var sx = round(px + cos(a) * r);
-    var sy = round(py + sin(a) * r);
-    vertex(sx, sy);
+  for (var k = 0; k < pts; k++) {
+    var ang = TWO_PI * k / pts;
+    // blend several noise octaves per node for organic wobble
+    var nIdx = floor(k / (pts / WOBBLE_NODES));
+    var nVal = noise(b.offsets[nIdx % WOBBLE_NODES] + t * 0.8, ang * 0.5);
+    var deform = 1 + (nVal - 0.5) * WOBBLE_AMP * 2;
+    var rr = b.r * deform;
+    // pixel-snap for chunky aesthetic
+    var sx = round(b.x + cos(ang) * rr);
+    var sy = round(b.y + sin(ang) * rr);
+    curveVertex(sx, sy);
   }
-  endShape(CLOSE);
+  // close smoothly: repeat first 3 control points
+  for (var k = 0; k < 3; k++) {
+    var ang = TWO_PI * k / pts;
+    var nIdx = floor(k / (pts / WOBBLE_NODES));
+    var nVal = noise(b.offsets[nIdx % WOBBLE_NODES] + t * 0.8, ang * 0.5);
+    var deform = 1 + (nVal - 0.5) * WOBBLE_AMP * 2;
+    var rr = b.r * deform;
+    var sx = round(b.x + cos(ang) * rr);
+    var sy = round(b.y + sin(ang) * rr);
+    curveVertex(sx, sy);
+  }
+  endShape();
 }
 
 // ── PIXEL HEART ─────────────────────────────────────────────────
