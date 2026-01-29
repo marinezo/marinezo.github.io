@@ -6,16 +6,18 @@ var PULSE_FORCE  = 2.0;
 var ATTACK_MS    = 300;
 var DECAY_MS     = 1200;
 var TREMBLE_AMP  = 2.5;
-var PETAL_DROP_CHANCE = 0.08;  // per petal per pulse
-var PETAL_LIFE   = 6000;       // ms before fallen petal fades out
-var PETAL_FADE   = 2000;       // ms to fade after life expires
-var BLOOM_INTERVAL = 2500;     // ms between new buds appearing
-var MAX_FLOWERS  = 10;         // max flowers alive at once
+var LEAF_TREMBLE = 1.8;
+var PETAL_DROP_CHANCE = 0.08;
+var PETAL_LIFE   = 6000;
+var PETAL_FADE   = 2000;
+var BLOOM_INTERVAL = 1800;     // faster blooming
+var MAX_FLOWERS  = 18;         // more flowers
 
 // ── STATE ───────────────────────────────────────────────────────
-var flowers = [];              // each has petals[]
-var fallenPetals = [];         // detached individual petals
+var flowers = [];
+var fallenPetals = [];
 var branches = [];
+var branchLeaves = [];         // leaves attached to branches
 var pulseEnvelope = 0;
 var pulseTime     = -9999;
 var lastPulseMs   = 0;
@@ -23,9 +25,9 @@ var bpm           = 0;
 var bpmHistory    = [];
 var indicatorFill = 0;
 var cx, cy;
-var dragging      = null;      // { type:'petal', flowerIdx, petalIdx } or { type:'fallen', idx }
+var dragging      = null;
 var lastBloomTime = 0;
-var bloomSlots = [];           // positions along branches where flowers can appear
+var bloomSlots = [];
 
 // ── PETAL IN A FLOWER ───────────────────────────────────────────
 function createFlowerPetal(ang) {
@@ -50,9 +52,20 @@ function createFlower(x, y, size) {
     petals: petals,
     noiseSeed: random(1000),
     budding: true,
-    budStart: 0,              // set when placed
+    budStart: 0,
     budDuration: random(800, 1500),
     alive: true
+  };
+}
+
+// ── BRANCH LEAF ─────────────────────────────────────────────────
+function createBranchLeaf(x, y, size, ang) {
+  return {
+    x: x, y: y,
+    homeX: x, homeY: y,
+    size: size,
+    angle: ang,
+    noiseSeed: random(1000)
   };
 }
 
@@ -79,8 +92,7 @@ function buildBranch(x0, y0, ang, len, depth, maxDepth, thickness) {
   var segments = max(4, floor(len / 4));
   var px = x0;
   var py = y0;
-  // more curvature
-  var curveAmt = (depth === 0) ? 0.10 : 0.18;
+  var curveAmt = (depth === 0) ? 0.12 : 0.22;
 
   for (var i = 0; i <= segments; i++) {
     pts.push({ x: px, y: py });
@@ -92,17 +104,33 @@ function buildBranch(x0, y0, ang, len, depth, maxDepth, thickness) {
   branches.push({ pts: pts, depth: depth, thickness: thickness });
 
   // collect bloom slots on thinner branches (inside circle)
-  if (depth >= 2) {
+  if (depth >= 1) {
     for (var i = 0; i < pts.length; i++) {
       var d = sqrt(pts[i].x * pts[i].x + pts[i].y * pts[i].y);
-      if (d < WATCH_R - 15 && random() > 0.7) {
+      if (d < WATCH_R - 15 && random() > 0.6) {
         bloomSlots.push({ x: pts[i].x, y: pts[i].y });
       }
     }
   }
 
+  // place leaves along branches (depth >= 1)
+  if (depth >= 1) {
+    for (var i = 0; i < pts.length; i++) {
+      var d = sqrt(pts[i].x * pts[i].x + pts[i].y * pts[i].y);
+      if (d < WATCH_R - 10 && random() > 0.75) {
+        var leafAng = ang + random(-1.2, 1.2);
+        branchLeaves.push(createBranchLeaf(
+          pts[i].x + random(-3, 3),
+          pts[i].y + random(-3, 3),
+          random(6, 12),
+          leafAng
+        ));
+      }
+    }
+  }
+
   // fork sub-branches
-  var forkCount = (depth < 2) ? floor(random(2, 5)) : floor(random(1, 3));
+  var forkCount = (depth < 2) ? floor(random(3, 5)) : floor(random(1, 3));
   for (var f = 0; f < forkCount; f++) {
     var frac = random(0.25, 0.85);
     var idx = min(floor(segments * frac), pts.length - 1);
@@ -111,7 +139,7 @@ function buildBranch(x0, y0, ang, len, depth, maxDepth, thickness) {
     var forkAng = ang + spread;
     var forkLen = len * random(0.4, 0.65);
     var forkThick = thickness * random(0.45, 0.65);
-    buildBranch(bp.x, bp.y, forkAng, forkLen, depth + 1, maxDepth, max(1.5, forkThick));
+    buildBranch(bp.x, bp.y, forkAng, forkLen, depth + 1, maxDepth, max(2, forkThick));
   }
 }
 
@@ -140,14 +168,12 @@ function registerPulse() {
       var pt = fl.petals[p];
       if (pt.alive && random() < PETAL_DROP_CHANCE) {
         pt.alive = false;
-        // spawn fallen petal at its position
         var petalAng = fl.angle + pt.localAng;
         var px = fl.x + cos(petalAng) * fl.size * 0.35;
         var py = fl.y + sin(petalAng) * fl.size * 0.35;
         fallenPetals.push(createFallenPetal(px, py, fl.size * 0.7, petalAng));
       }
     }
-    // check if flower is empty
     var anyAlive = false;
     for (var p = 0; p < fl.petals.length; p++) {
       if (fl.petals[p].alive) { anyAlive = true; break; }
@@ -155,11 +181,17 @@ function registerPulse() {
     if (!anyAlive) fl.alive = false;
   }
 
-  // wind gust on already-fallen petals
+  // wind gust on fallen petals — including settled ones at the bottom
   for (var i = 0; i < fallenPetals.length; i++) {
     var fp = fallenPetals[i];
-    fp.vx += random(-0.6, 0.6);
-    fp.vy += random(-PULSE_FORCE * 0.4, 0.2);
+    fp.vx += random(-1.2, 1.2);
+    // upward kick for settled petals (near bottom of circle)
+    if (fp.y > WATCH_R * 0.5) {
+      fp.vy += random(-PULSE_FORCE * 0.8, -PULSE_FORCE * 0.2);
+    } else {
+      fp.vy += random(-PULSE_FORCE * 0.4, 0.2);
+    }
+    fp.spin += random(-0.01, 0.01);
   }
 }
 
@@ -170,7 +202,6 @@ function keyPressed() {
 function mousePressed() {
   var mx = mouseX - cx;
   var my = mouseY - cy;
-  // check fallen petals
   for (var i = fallenPetals.length - 1; i >= 0; i--) {
     var fp = fallenPetals[i];
     var dx = mx - fp.x;
@@ -205,28 +236,28 @@ function setup() {
   cx = width / 2;
   cy = height / 2;
 
-  // main trunk: starts well outside circle, sweeps across
+  // main trunk — much thicker
   buildBranch(
     -WATCH_R * 1.3, WATCH_R * 0.8,
     -PI / 6 + random(-0.1, 0.1),
     WATCH_R * 2.2,
-    0, 5, 12
+    0, 5, 22
   );
 
-  // second branch from outside right
+  // second branch
   buildBranch(
     WATCH_R * 1.2, WATCH_R * 0.7,
     -PI * 0.75 + random(-0.1, 0.1),
     WATCH_R * 1.6,
-    0, 5, 9
+    0, 5, 16
   );
 
-  // third from outside top-left
+  // third from top-left
   buildBranch(
     -WATCH_R * 0.9, -WATCH_R * 1.1,
     PI / 5 + random(-0.1, 0.1),
     WATCH_R * 1.4,
-    0, 4, 7
+    0, 4, 13
   );
 
   // shuffle bloom slots
@@ -237,12 +268,12 @@ function setup() {
     bloomSlots[j] = tmp;
   }
 
-  // place initial flowers (fewer)
-  var initialCount = min(6, bloomSlots.length);
+  // place initial flowers — more
+  var initialCount = min(12, bloomSlots.length);
   for (var i = 0; i < initialCount; i++) {
     var sl = bloomSlots[i];
     var fl = createFlower(sl.x, sl.y, random(8, 14));
-    fl.budding = false; // start fully bloomed
+    fl.budding = false;
     flowers.push(fl);
   }
 
@@ -272,7 +303,6 @@ function draw() {
     if (flowers[i].alive) aliveCount++;
   }
   if (now - lastBloomTime > BLOOM_INTERVAL && aliveCount < MAX_FLOWERS && bloomSlots.length > 0) {
-    // pick a random slot
     var si = floor(random(bloomSlots.length));
     var sl = bloomSlots[si];
     var fl = createFlower(sl.x + random(-4, 4), sl.y + random(-4, 4), random(7, 13));
@@ -285,7 +315,6 @@ function draw() {
   for (var i = fallenPetals.length - 1; i >= 0; i--) {
     var fp = fallenPetals[i];
 
-    // age and fade
     var age = now - fp.bornAt;
     if (age > PETAL_LIFE + PETAL_FADE) {
       fallenPetals.splice(i, 1);
@@ -304,11 +333,13 @@ function draw() {
     fp.vy += GRAVITY;
     fp.vx += (noise(fp.noiseSeed + t * 0.5) - 0.5) * 0.05;
 
+    // continuous wind push during pulse envelope
     if (pulseEnvelope > 0.01) {
-      fp.vx += (noise(fp.noiseSeed + t * 3) - 0.5) * 0.25 * pulseEnvelope;
+      fp.vx += (noise(fp.noiseSeed + t * 3) - 0.5) * 0.4 * pulseEnvelope;
+      fp.vy -= 0.15 * pulseEnvelope; // slight uplift
     }
 
-    // contain
+    // contain inside circle
     var dist = sqrt(fp.x * fp.x + fp.y * fp.y);
     var maxD = WATCH_R - fp.size - 2;
     if (dist > maxD && dist > 0.1) {
@@ -348,6 +379,20 @@ function draw() {
     }
   }
 
+  // ── LEAF TREMBLE ──────────────────────────────────────────
+  for (var i = 0; i < branchLeaves.length; i++) {
+    var lf = branchLeaves[i];
+    if (pulseEnvelope > 0.01) {
+      var tx = (noise(lf.noiseSeed + t * 6) - 0.5) * LEAF_TREMBLE * pulseEnvelope;
+      var ty = (noise(lf.noiseSeed + 300 + t * 6) - 0.5) * LEAF_TREMBLE * pulseEnvelope;
+      lf.x = lf.homeX + tx;
+      lf.y = lf.homeY + ty;
+    } else {
+      lf.x = lf.homeX;
+      lf.y = lf.homeY;
+    }
+  }
+
   translate(cx, cy);
 
   // ── WATCH CIRCLE ──────────────────────────────────────────
@@ -368,6 +413,14 @@ function draw() {
     drawThickBranch(br.pts, br.thickness);
   }
 
+  // ── LEAVES ────────────────────────────────────────────────
+  noFill();
+  stroke(0);
+  strokeWeight(1);
+  for (var i = 0; i < branchLeaves.length; i++) {
+    drawLeaf(branchLeaves[i]);
+  }
+
   // ── FLOWERS ───────────────────────────────────────────────
   for (var i = 0; i < flowers.length; i++) {
     var fl = flowers[i];
@@ -375,7 +428,6 @@ function draw() {
     var scale = 1;
     if (fl.budding) {
       var progress = min(1, (now - fl.budStart) / fl.budDuration);
-      // ease out
       scale = progress * progress * (3 - 2 * progress);
     }
     drawFlower(fl, t, scale);
@@ -463,6 +515,52 @@ function drawThickBranch(pts, thickness) {
   endShape(CLOSE);
 }
 
+// ── DRAW LEAF (pointed oval with midrib) ────────────────────────
+function drawLeaf(lf) {
+  var s = lf.size;
+  var px = lf.x;
+  var py = lf.y;
+  var a = lf.angle;
+
+  var tipX = px + cos(a) * s;
+  var tipY = py + sin(a) * s;
+  var baseX = px - cos(a) * s * 0.3;
+  var baseY = py - sin(a) * s * 0.3;
+
+  var perpX = cos(a + HALF_PI);
+  var perpY = sin(a + HALF_PI);
+  var bulge = s * 0.35;
+
+  // left curve control
+  var midLX = px + cos(a) * s * 0.35 + perpX * bulge;
+  var midLY = py + sin(a) * s * 0.35 + perpY * bulge;
+  // right curve control
+  var midRX = px + cos(a) * s * 0.35 - perpX * bulge;
+  var midRY = py + sin(a) * s * 0.35 - perpY * bulge;
+
+  noFill();
+  stroke(0);
+  strokeWeight(1);
+
+  // left side
+  beginShape();
+  vertex(round(baseX), round(baseY));
+  quadraticVertex(round(midLX), round(midLY), round(tipX), round(tipY));
+  endShape();
+
+  // right side
+  beginShape();
+  vertex(round(baseX), round(baseY));
+  quadraticVertex(round(midRX), round(midRY), round(tipX), round(tipY));
+  endShape();
+
+  // midrib
+  beginShape();
+  vertex(round(baseX), round(baseY));
+  vertex(round(tipX), round(tipY));
+  endShape();
+}
+
 // ── DRAW FLOWER (only alive petals) ─────────────────────────────
 function drawFlower(fl, t, scale) {
   var s = fl.size * scale;
@@ -494,7 +592,6 @@ function drawFallenPetal(fp, t) {
   var a = fp.angle + sin(t * 2 + fp.noiseSeed) * 0.25;
 
   if (fp.opacity < 1) {
-    // use alpha via drawingContext
     drawingContext.globalAlpha = max(0, fp.opacity);
   }
 
