@@ -6,7 +6,8 @@ var PULSE_FORCE  = 2.0;
 var ATTACK_MS    = 300;
 var DECAY_MS     = 1200;
 var TREMBLE_AMP  = 2.5;
-var LEAF_TREMBLE = 1.8;
+var LEAF_TREMBLE = 2.2;
+var LEAF_WIGGLE_SPEED = 5;
 var PETAL_DROP_CHANCE = 0.08;
 var PETAL_LIFE   = 6000;
 var PETAL_FADE   = 2000;
@@ -122,7 +123,7 @@ function buildBranch(x0, y0, ang, len, depth, maxDepth, thickness) {
         branchLeaves.push(createBranchLeaf(
           pts[i].x + random(-3, 3),
           pts[i].y + random(-3, 3),
-          random(6, 12),
+          random(12, 22),
           leafAng
         ));
       }
@@ -181,17 +182,16 @@ function registerPulse() {
     if (!anyAlive) fl.alive = false;
   }
 
-  // wind gust on fallen petals — including settled ones at the bottom
+  // gentle wind nudge on fallen petals — mostly sideways, tiny upward
   for (var i = 0; i < fallenPetals.length; i++) {
     var fp = fallenPetals[i];
-    fp.vx += random(-1.2, 1.2);
-    // upward kick for settled petals (near bottom of circle)
+    fp.vx += random(-0.5, 0.5);           // light sideways drift
     if (fp.y > WATCH_R * 0.5) {
-      fp.vy += random(-PULSE_FORCE * 0.8, -PULSE_FORCE * 0.2);
+      fp.vy += random(-0.3, -0.05);       // tiny upward nudge if settled
     } else {
-      fp.vy += random(-PULSE_FORCE * 0.4, 0.2);
+      fp.vy += random(-0.1, 0.05);        // barely perceptible
     }
-    fp.spin += random(-0.01, 0.01);
+    fp.spin += random(-0.005, 0.005);
   }
 }
 
@@ -241,7 +241,7 @@ function setup() {
     -WATCH_R * 1.3, WATCH_R * 0.8,
     -PI / 6 + random(-0.1, 0.1),
     WATCH_R * 2.2,
-    0, 5, 22
+    0, 5, 36
   );
 
   // second branch
@@ -249,7 +249,7 @@ function setup() {
     WATCH_R * 1.2, WATCH_R * 0.7,
     -PI * 0.75 + random(-0.1, 0.1),
     WATCH_R * 1.6,
-    0, 5, 16
+    0, 5, 28
   );
 
   // third from top-left
@@ -257,7 +257,7 @@ function setup() {
     -WATCH_R * 0.9, -WATCH_R * 1.1,
     PI / 5 + random(-0.1, 0.1),
     WATCH_R * 1.4,
-    0, 4, 13
+    0, 4, 22
   );
 
   // shuffle bloom slots
@@ -333,10 +333,9 @@ function draw() {
     fp.vy += GRAVITY;
     fp.vx += (noise(fp.noiseSeed + t * 0.5) - 0.5) * 0.05;
 
-    // continuous wind push during pulse envelope
+    // gentle sideways breeze during pulse envelope
     if (pulseEnvelope > 0.01) {
-      fp.vx += (noise(fp.noiseSeed + t * 3) - 0.5) * 0.4 * pulseEnvelope;
-      fp.vy -= 0.15 * pulseEnvelope; // slight uplift
+      fp.vx += (noise(fp.noiseSeed + t * 3) - 0.5) * 0.15 * pulseEnvelope;
     }
 
     // contain inside circle
@@ -379,17 +378,20 @@ function draw() {
     }
   }
 
-  // ── LEAF TREMBLE ──────────────────────────────────────────
+  // ── LEAF WIGGLE ────────────────────────────────────────────
   for (var i = 0; i < branchLeaves.length; i++) {
     var lf = branchLeaves[i];
     if (pulseEnvelope > 0.01) {
-      var tx = (noise(lf.noiseSeed + t * 6) - 0.5) * LEAF_TREMBLE * pulseEnvelope;
-      var ty = (noise(lf.noiseSeed + 300 + t * 6) - 0.5) * LEAF_TREMBLE * pulseEnvelope;
+      var tx = (noise(lf.noiseSeed + t * LEAF_WIGGLE_SPEED) - 0.5) * LEAF_TREMBLE * pulseEnvelope;
+      var ty = (noise(lf.noiseSeed + 300 + t * LEAF_WIGGLE_SPEED) - 0.5) * LEAF_TREMBLE * pulseEnvelope;
       lf.x = lf.homeX + tx;
       lf.y = lf.homeY + ty;
+      // angle wiggle
+      lf.wiggleAng = (noise(lf.noiseSeed + 600 + t * LEAF_WIGGLE_SPEED) - 0.5) * 0.3 * pulseEnvelope;
     } else {
       lf.x = lf.homeX;
       lf.y = lf.homeY;
+      lf.wiggleAng = 0;
     }
   }
 
@@ -515,50 +517,84 @@ function drawThickBranch(pts, thickness) {
   endShape(CLOSE);
 }
 
-// ── DRAW LEAF (pointed oval with midrib) ────────────────────────
+// ── DRAW SAKURA LEAF (wide palmate, white fill, black contour) ──
 function drawLeaf(lf) {
   var s = lf.size;
   var px = lf.x;
   var py = lf.y;
-  var a = lf.angle;
+  var a = lf.angle + (lf.wiggleAng || 0);
 
-  var tipX = px + cos(a) * s;
-  var tipY = py + sin(a) * s;
-  var baseX = px - cos(a) * s * 0.3;
-  var baseY = py - sin(a) * s * 0.3;
+  // sakura leaves have 5 pointed lobes radiating from a stem
+  var stemLen = s * 0.4;
+  var stemX = px - cos(a) * stemLen;
+  var stemY = py - sin(a) * stemLen;
 
   var perpX = cos(a + HALF_PI);
   var perpY = sin(a + HALF_PI);
-  var bulge = s * 0.35;
 
-  // left curve control
-  var midLX = px + cos(a) * s * 0.35 + perpX * bulge;
-  var midLY = py + sin(a) * s * 0.35 + perpY * bulge;
-  // right curve control
-  var midRX = px + cos(a) * s * 0.35 - perpX * bulge;
-  var midRY = py + sin(a) * s * 0.35 - perpY * bulge;
+  // draw stem
+  stroke(0);
+  strokeWeight(1);
+  beginShape();
+  vertex(round(stemX), round(stemY));
+  vertex(round(px), round(py));
+  endShape();
 
+  // 5 lobes — spread wide
+  var lobeAngles = [-0.7, -0.3, 0, 0.3, 0.7];
+  var lobeLens   = [0.7,  0.9, 1.0, 0.9, 0.7];
+
+  for (var i = 0; i < 5; i++) {
+    var lobeAng = a + lobeAngles[i];
+    var lobeLen = s * 0.55 * lobeLens[i];
+    var lobeW = s * 0.22;
+
+    var tipLX = px + cos(lobeAng) * lobeLen;
+    var tipLY = py + sin(lobeAng) * lobeLen;
+
+    var lPerpX = cos(lobeAng + HALF_PI);
+    var lPerpY = sin(lobeAng + HALF_PI);
+
+    var midFrac = 0.45;
+    var midX = px + cos(lobeAng) * lobeLen * midFrac;
+    var midY = py + sin(lobeAng) * lobeLen * midFrac;
+
+    var c1x = midX + lPerpX * lobeW;
+    var c1y = midY + lPerpY * lobeW;
+    var c2x = midX - lPerpX * lobeW;
+    var c2y = midY - lPerpY * lobeW;
+
+    // serrated tip
+    var notchD = lobeLen * 0.12;
+    var notchX = tipLX - cos(lobeAng) * notchD;
+    var notchY = tipLY - sin(lobeAng) * notchD;
+
+    fill(255);
+    stroke(0);
+    strokeWeight(1);
+
+    // draw as closed shape
+    beginShape();
+    vertex(round(px), round(py));
+    quadraticVertex(round(c1x), round(c1y), round(tipLX + lPerpX * 1), round(tipLY + lPerpY * 1));
+    vertex(round(notchX), round(notchY));
+    vertex(round(tipLX - lPerpX * 1), round(tipLY - lPerpY * 1));
+    quadraticVertex(round(c2x), round(c2y), round(px), round(py));
+    endShape(CLOSE);
+  }
+
+  // central vein lines for each lobe
   noFill();
   stroke(0);
   strokeWeight(1);
-
-  // left side
-  beginShape();
-  vertex(round(baseX), round(baseY));
-  quadraticVertex(round(midLX), round(midLY), round(tipX), round(tipY));
-  endShape();
-
-  // right side
-  beginShape();
-  vertex(round(baseX), round(baseY));
-  quadraticVertex(round(midRX), round(midRY), round(tipX), round(tipY));
-  endShape();
-
-  // midrib
-  beginShape();
-  vertex(round(baseX), round(baseY));
-  vertex(round(tipX), round(tipY));
-  endShape();
+  for (var i = 0; i < 5; i++) {
+    var lobeAng = a + lobeAngles[i];
+    var lobeLen = s * 0.45 * lobeLens[i];
+    beginShape();
+    vertex(round(px), round(py));
+    vertex(round(px + cos(lobeAng) * lobeLen), round(py + sin(lobeAng) * lobeLen));
+    endShape();
+  }
 }
 
 // ── DRAW FLOWER (only alive petals) ─────────────────────────────
