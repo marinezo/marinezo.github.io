@@ -1,15 +1,16 @@
 // ── CONFIG ──────────────────────────────────────────────────────
 var WATCH_R      = 200;
-var LEAF_COUNT   = 24;
 var DAMPING      = 0.97;
-var GRAVITY      = 0.04;      // gentle fall
-var PULSE_FORCE  = 3;
+var GRAVITY      = 0.035;
+var PULSE_FORCE  = 2.5;
 var ATTACK_MS    = 300;
 var DECAY_MS     = 1200;
+var TREMBLE_AMP  = 3.0;       // how much attached petals shake on pulse
+var FALL_CHANCE  = 0.12;      // chance a petal detaches per pulse
 
 // ── STATE ───────────────────────────────────────────────────────
 var leaves = [];
-var branches = [];
+var branches = [];            // each: { pts:[], depth:int, thickness:num }
 var pulseEnvelope = 0;
 var pulseTime     = -9999;
 var lastPulseMs   = 0;
@@ -17,58 +18,58 @@ var bpm           = 0;
 var bpmHistory    = [];
 var indicatorFill = 0;
 var cx, cy;
-var dragging      = null;     // index of leaf being dragged
+var dragging      = null;
 
-// ── SAKURA LEAF CLASS ───────────────────────────────────────────
+// ── SAKURA LEAF ─────────────────────────────────────────────────
 function createLeaf(x, y, size, ang) {
   return {
-    x: x,
-    y: y,
-    vx: 0,
-    vy: 0,
+    x: x, y: y,
+    homeX: x, homeY: y,       // rest position for tremble
+    vx: 0, vy: 0,
     size: size,
-    angle: ang,             // rotation of the petal
-    spin: random(-0.005, 0.005), // slow idle spin
+    angle: ang,
+    spin: random(-0.005, 0.005),
     noiseSeed: random(1000),
-    attached: true          // still on branch initially
+    attached: true
   };
 }
 
-// ── BRANCH STRUCTURE ────────────────────────────────────────────
-// A branch is a series of points forming a curved line
-function buildBranch(x0, y0, ang, len, depth, maxDepth) {
-  if (depth > maxDepth) return;
+// ── BRANCH BUILDER ──────────────────────────────────────────────
+// builds thick, layered branches that spread across the circle
+function buildBranch(x0, y0, ang, len, depth, maxDepth, thickness) {
+  if (depth > maxDepth || len < 8) return;
+
   var pts = [];
-  var segments = floor(len / 6);
+  var segments = max(3, floor(len / 5));
   var px = x0;
   var py = y0;
+  var curveAmt = (depth === 0) ? 0.06 : 0.12;
+
   for (var i = 0; i <= segments; i++) {
     pts.push({ x: px, y: py });
-    px += cos(ang) * 6;
-    py += sin(ang) * 6;
-    ang += random(-0.15, 0.15); // slight organic curve
-  }
-  branches.push(pts);
-
-  // end of branch: place a leaf
-  if (depth >= maxDepth - 1) {
-    leaves.push(createLeaf(px, py, random(6, 12), ang + random(-0.5, 0.5)));
+    px += cos(ang) * 5;
+    py += sin(ang) * 5;
+    ang += random(-curveAmt, curveAmt);
   }
 
-  // sub-branches
-  if (depth < maxDepth) {
-    var branchAt = floor(segments * random(0.4, 0.7));
-    var bp = pts[min(branchAt, pts.length - 1)];
-    var forkAng = ang + random(0.3, 0.8) * (random() > 0.5 ? 1 : -1);
-    buildBranch(bp.x, bp.y, forkAng, len * random(0.5, 0.75), depth + 1, maxDepth);
+  branches.push({ pts: pts, depth: depth, thickness: thickness });
 
-    // sometimes a second fork
-    if (random() > 0.4) {
-      var branchAt2 = floor(segments * random(0.5, 0.85));
-      var bp2 = pts[min(branchAt2, pts.length - 1)];
-      var forkAng2 = ang + random(0.3, 0.7) * (random() > 0.5 ? 1 : -1);
-      buildBranch(bp2.x, bp2.y, forkAng2, len * random(0.4, 0.65), depth + 1, maxDepth);
-    }
+  // place leaves at tips and along thinner branches
+  if (depth >= maxDepth - 2) {
+    leaves.push(createLeaf(px, py, random(7, 13), ang + random(-0.5, 0.5)));
+  }
+
+  // fork sub-branches
+  var forkCount = (depth < 2) ? floor(random(2, 4)) : floor(random(1, 3));
+  for (var f = 0; f < forkCount; f++) {
+    var frac = random(0.3, 0.9);
+    var idx = min(floor(segments * frac), pts.length - 1);
+    var bp = pts[idx];
+    var spread = random(0.3, 1.0) * (random() > 0.5 ? 1 : -1);
+    var forkAng = ang + spread;
+    var forkLen = len * random(0.45, 0.7);
+    var forkThick = thickness * random(0.5, 0.7);
+    buildBranch(bp.x, bp.y, forkAng, forkLen, depth + 1, maxDepth, max(1, forkThick));
   }
 }
 
@@ -81,9 +82,7 @@ function registerPulse() {
       bpmHistory.push(60000 / interval);
       if (bpmHistory.length > 6) bpmHistory.shift();
       var sum = 0;
-      for (var i = 0; i < bpmHistory.length; i++) {
-        sum += bpmHistory[i];
-      }
+      for (var i = 0; i < bpmHistory.length; i++) sum += bpmHistory[i];
       bpm = round(sum / bpmHistory.length);
     }
   }
@@ -91,40 +90,40 @@ function registerPulse() {
   pulseTime   = now;
   indicatorFill = 1;
 
-  // shake leaves: detach some, give all a gentle push
+  // wind effect: some fall, others just tremble (handled in draw via envelope)
   for (var i = 0; i < leaves.length; i++) {
     var lf = leaves[i];
-    if (lf.attached && random() > 0.6) {
+    if (lf.attached && random() < FALL_CHANCE) {
       lf.attached = false;
+      // gentle wind push
+      lf.vx += random(-1.0, 1.0);
+      lf.vy += random(-1.5, 0.5);
     }
     if (!lf.attached) {
-      lf.vx += random(-1.2, 1.2);
-      lf.vy += random(-PULSE_FORCE, -PULSE_FORCE * 0.2);
+      // wind gust on already-falling petals
+      lf.vx += random(-0.8, 0.8);
+      lf.vy += random(-PULSE_FORCE * 0.5, 0.3);
     }
   }
 }
 
 function keyPressed() {
-  if (key === ' ') {
-    registerPulse();
-  }
+  if (key === ' ') registerPulse();
 }
 
 function mousePressed() {
-  // check if clicking a leaf (for dragging)
   var mx = mouseX - cx;
   var my = mouseY - cy;
   for (var i = leaves.length - 1; i >= 0; i--) {
     var lf = leaves[i];
     var dx = mx - lf.x;
     var dy = my - lf.y;
-    if (sqrt(dx * dx + dy * dy) < lf.size + 4) {
+    if (sqrt(dx * dx + dy * dy) < lf.size + 6) {
       dragging = i;
       lf.attached = false;
       return;
     }
   }
-  // no leaf hit — register pulse
   registerPulse();
 }
 
@@ -148,18 +147,40 @@ function setup() {
   cx = width / 2;
   cy = height / 2;
 
-  // build branch tree starting from lower-left, growing up-right
-  buildBranch(-WATCH_R * 0.6, WATCH_R * 0.3, -PI / 4 + random(-0.2, 0.2), WATCH_R * 0.8, 0, 4);
+  // main trunk: starts from bottom-left, sweeps across
+  buildBranch(
+    -WATCH_R * 0.85, WATCH_R * 0.55,
+    -PI / 5 + random(-0.1, 0.1),
+    WATCH_R * 1.6,
+    0, 5, 7
+  );
 
-  // add extra leaves along branches
+  // second layer: from bottom-right, crossing over
+  buildBranch(
+    WATCH_R * 0.7, WATCH_R * 0.6,
+    -PI * 0.7 + random(-0.1, 0.1),
+    WATCH_R * 1.1,
+    0, 4, 5
+  );
+
+  // third layer: from top, arching down
+  buildBranch(
+    -WATCH_R * 0.3, -WATCH_R * 0.75,
+    PI / 6 + random(-0.15, 0.15),
+    WATCH_R * 0.9,
+    0, 4, 4
+  );
+
+  // scatter extra leaves along branches
   for (var i = 0; i < branches.length; i++) {
     var br = branches[i];
-    for (var j = 0; j < br.length; j++) {
-      if (random() > 0.82) {
+    if (br.depth < 2) continue; // only on thinner branches
+    for (var j = 0; j < br.pts.length; j++) {
+      if (random() > 0.78) {
         leaves.push(createLeaf(
-          br[j].x + random(-4, 4),
-          br[j].y + random(-4, 4),
-          random(5, 10),
+          br.pts[j].x + random(-6, 6),
+          br.pts[j].y + random(-6, 6),
+          random(5, 11),
           random(TWO_PI)
         ));
       }
@@ -188,13 +209,31 @@ function draw() {
   for (var i = 0; i < leaves.length; i++) {
     if (i === dragging) continue;
     var lf = leaves[i];
-    if (lf.attached) continue;
+
+    if (lf.attached) {
+      // tremble in place when pulse active
+      if (pulseEnvelope > 0.01) {
+        var tremX = (noise(lf.noiseSeed + t * 8) - 0.5) * TREMBLE_AMP * pulseEnvelope;
+        var tremY = (noise(lf.noiseSeed + 500 + t * 8) - 0.5) * TREMBLE_AMP * pulseEnvelope;
+        lf.x = lf.homeX + tremX;
+        lf.y = lf.homeY + tremY;
+      } else {
+        lf.x = lf.homeX;
+        lf.y = lf.homeY;
+      }
+      continue;
+    }
 
     // gravity
     lf.vy += GRAVITY;
 
-    // sideways drift (fluttering)
-    lf.vx += (noise(lf.noiseSeed + t * 0.5) - 0.5) * 0.08;
+    // fluttering sideways drift
+    lf.vx += (noise(lf.noiseSeed + t * 0.5) - 0.5) * 0.06;
+
+    // wind during pulse
+    if (pulseEnvelope > 0.01) {
+      lf.vx += (noise(lf.noiseSeed + t * 3) - 0.5) * 0.3 * pulseEnvelope;
+    }
 
     // contain inside watch circle
     var dist = sqrt(lf.x * lf.x + lf.y * lf.y);
@@ -222,7 +261,7 @@ function draw() {
         var overlap = minD - dd;
         var ux = dx / dd;
         var uy = dy / dd;
-        var f = overlap * 0.08;
+        var f = overlap * 0.06;
         lf.vx += ux * f;
         lf.vy += uy * f;
         o.vx  -= ux * f;
@@ -251,26 +290,13 @@ function draw() {
   drawingContext.arc(0, 0, WATCH_R - 1, 0, TWO_PI);
   drawingContext.clip();
 
-  // ── BRANCHES ──────────────────────────────────────────────
-  noFill();
-  stroke(0);
-  strokeWeight(1);
+  // ── BRANCHES (thick, white fill, black contour) ───────────
   for (var i = 0; i < branches.length; i++) {
     var br = branches[i];
-    beginShape();
-    // first point repeated for curveVertex
-    curveVertex(br[0].x, br[0].y);
-    for (var j = 0; j < br.length; j++) {
-      curveVertex(br[j].x, br[j].y);
-    }
-    curveVertex(br[br.length - 1].x, br[br.length - 1].y);
-    endShape();
+    drawThickBranch(br.pts, br.thickness);
   }
 
   // ── LEAVES ────────────────────────────────────────────────
-  noFill();
-  stroke(0);
-  strokeWeight(1);
   for (var i = 0; i < leaves.length; i++) {
     drawSakuraLeaf(leaves[i], t);
   }
@@ -309,7 +335,55 @@ function draw() {
   textSize(10);
   textFont('monospace');
   textAlign(CENTER, BOTTOM);
-  text('SPACE / TAP to pulse  |  drag leaves', width / 2, height - 16);
+  text('SPACE / TAP to pulse  |  drag petals', width / 2, height - 16);
+}
+
+// ── THICK BRANCH (white fill, black contour) ────────────────────
+// draws an outlined ribbon along the branch path
+function drawThickBranch(pts, thickness) {
+  if (pts.length < 2) return;
+
+  // build left and right edges by offsetting perpendicular to direction
+  var left = [];
+  var right = [];
+  for (var i = 0; i < pts.length; i++) {
+    // taper: thicker at start, thinner at tip
+    var taper = 1 - (i / (pts.length - 1)) * 0.7;
+    var w = thickness * taper * 0.5;
+
+    // direction
+    var dx, dy;
+    if (i < pts.length - 1) {
+      dx = pts[i + 1].x - pts[i].x;
+      dy = pts[i + 1].y - pts[i].y;
+    } else {
+      dx = pts[i].x - pts[i - 1].x;
+      dy = pts[i].y - pts[i - 1].y;
+    }
+    var mag = sqrt(dx * dx + dy * dy);
+    if (mag < 0.1) mag = 0.1;
+    // perpendicular
+    var nx = -dy / mag;
+    var ny = dx / mag;
+
+    left.push({ x: pts[i].x + nx * w, y: pts[i].y + ny * w });
+    right.push({ x: pts[i].x - nx * w, y: pts[i].y - ny * w });
+  }
+
+  // draw as a closed shape: left edge forward, right edge backward
+  fill(255);
+  stroke(0);
+  strokeWeight(1);
+  beginShape();
+  // left edge
+  for (var i = 0; i < left.length; i++) {
+    vertex(round(left[i].x), round(left[i].y));
+  }
+  // right edge reversed
+  for (var i = right.length - 1; i >= 0; i--) {
+    vertex(round(right[i].x), round(right[i].y));
+  }
+  endShape(CLOSE);
 }
 
 // ── SAKURA LEAF (5-petal contour) ───────────────────────────────
@@ -319,44 +393,40 @@ function drawSakuraLeaf(lf, t) {
   var py = lf.y;
   var a = lf.angle;
 
-  // slight wobble when falling
+  // wobble when falling
   if (!lf.attached) {
-    a += sin(t * 2 + lf.noiseSeed) * 0.15;
+    a += sin(t * 2 + lf.noiseSeed) * 0.2;
   }
 
   noFill();
   stroke(0);
   strokeWeight(1);
 
-  // draw 5 petals arranged in a circle
   for (var p = 0; p < 5; p++) {
     var petalAng = a + TWO_PI * p / 5;
-    var cx2 = px + cos(petalAng) * s * 0.35;
-    var cy2 = py + sin(petalAng) * s * 0.35;
-    drawPetal(cx2, cy2, s, petalAng);
+    var pcx = px + cos(petalAng) * s * 0.35;
+    var pcy = py + sin(petalAng) * s * 0.35;
+    drawPetal(pcx, pcy, s, petalAng);
   }
 
-  // small centre dot
+  // centre dot
   noStroke();
   fill(0);
   var dotS = max(1, floor(s * 0.15));
-  rect(round(px) - floor(dotS/2), round(py) - floor(dotS/2), dotS, dotS);
+  rect(round(px) - floor(dotS / 2), round(py) - floor(dotS / 2), dotS, dotS);
 }
 
-// ── SINGLE PETAL (teardrop contour via bezier) ──────────────────
+// ── SINGLE PETAL ────────────────────────────────────────────────
 function drawPetal(px, py, size, ang) {
-  var len = size * 0.55;    // petal length from centre
-  var w   = size * 0.28;    // petal width
+  var len = size * 0.55;
+  var w   = size * 0.28;
 
-  // tip of petal
   var tipX = px + cos(ang) * len;
   var tipY = py + sin(ang) * len;
 
-  // perpendicular for width
   var perpX = cos(ang + HALF_PI);
   var perpY = sin(ang + HALF_PI);
 
-  // side control points
   var midFrac = 0.45;
   var midX = px + cos(ang) * len * midFrac;
   var midY = py + sin(ang) * len * midFrac;
@@ -366,7 +436,6 @@ function drawPetal(px, py, size, ang) {
   var c2x = midX - perpX * w;
   var c2y = midY - perpY * w;
 
-  // notch at tip (sakura characteristic)
   var notchDepth = len * 0.15;
   var notchX = tipX - cos(ang) * notchDepth;
   var notchY = tipY - sin(ang) * notchDepth;
