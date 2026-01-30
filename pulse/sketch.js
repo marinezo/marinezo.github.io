@@ -16,7 +16,7 @@ var MAX_FLOWERS  = 18;
 var flowers = [];
 var fallenPetals = [];
 var branches = [];            // BranchSegment objects
-var leaves = [];              // RealLeaf objects
+var loosePetals = [];         // small petals sitting on branches
 var pulseEnvelope = 0;
 var pulseTime     = -9999;
 var lastPulseMs   = 0;
@@ -104,56 +104,17 @@ BranchSegment.prototype.display = function() {
   endShape(CLOSE);
 };
 
-// ── REAL LEAF (from pasted code) ────────────────────────────────
-function RealLeaf(x, y, angle) {
-  this.pos = createVector(x, y);
-  this.angle = angle;
-  this.size = random(25, 45);
-  this.uniqueOffset = random(1000);
+// ── LOOSE PETAL (small sakura petal sitting on branch) ───────────
+function createLoosePetal(x, y) {
+  return {
+    x: x, y: y,
+    homeX: x, homeY: y,
+    size: random(5, 9),
+    angle: random(TWO_PI),
+    noiseSeed: random(1000),
+    alive: true
+  };
 }
-
-RealLeaf.prototype.display = function(intensity, time) {
-  // transform relative to centre (already translated)
-  var px = this.pos.x;
-  var py = this.pos.y;
-
-  // wind tremble
-  var windAngle = map(noise(time + this.uniqueOffset), 0, 1, -1, 1);
-  var tremble = windAngle * intensity;
-
-  drawingContext.save();
-  drawingContext.translate(px, py);
-  drawingContext.rotate(this.angle + tremble);
-
-  fill(255);
-  stroke(0);
-  strokeWeight(1);
-
-  // almond/lemon leaf shape via bezier
-  beginShape();
-  vertex(0, 0);
-  bezierVertex(
-    this.size * 0.3, -this.size * 0.4,
-    this.size * 0.7, -this.size * 0.4,
-    this.size, 0
-  );
-  bezierVertex(
-    this.size * 0.7, this.size * 0.4,
-    this.size * 0.3, this.size * 0.4,
-    0, 0
-  );
-  endShape(CLOSE);
-
-  // center vein with slight curve
-  noFill();
-  stroke(0);
-  beginShape();
-  vertex(0, 0);
-  quadraticVertex(this.size * 0.5, tremble * 5, this.size * 0.8, 0);
-  endShape();
-
-  drawingContext.restore();
-};
 
 // ── BRANCH GENERATION (recursive, from pasted code) ─────────────
 function generateBranch(startV, targetV, thickness, depth) {
@@ -178,14 +139,14 @@ function generateBranch(startV, targetV, thickness, depth) {
     }
   }
 
-  // exit: add leaf cluster at tips
+  // exit: add loose petals at tips
   if (thickness < 2 || depth > 5) {
-    var angle = dir.heading();
     var d = dist(endV.x, endV.y, 0, 0);
     if (d < WATCH_R - 10) {
-      leaves.push(new RealLeaf(endV.x, endV.y, angle));
-      leaves.push(new RealLeaf(endV.x, endV.y, angle + 0.5));
-      leaves.push(new RealLeaf(endV.x, endV.y, angle - 0.5));
+      loosePetals.push(createLoosePetal(endV.x + random(-6, 6), endV.y + random(-6, 6)));
+      if (random() < 0.5) {
+        loosePetals.push(createLoosePetal(endV.x + random(-10, 10), endV.y + random(-10, 10)));
+      }
     }
     return;
   }
@@ -200,11 +161,11 @@ function generateBranch(startV, targetV, thickness, depth) {
       endV.y + sin(angle) * newLen
     );
 
-    // chance to add leaf at joint
-    if (random() < 0.4) {
+    // chance to add loose petal at joint
+    if (random() < 0.3) {
       var jd = dist(endV.x, endV.y, 0, 0);
       if (jd < WATCH_R - 10) {
-        leaves.push(new RealLeaf(endV.x, endV.y, angle + random(-1, 1)));
+        loosePetals.push(createLoosePetal(endV.x + random(-8, 8), endV.y + random(-8, 8)));
       }
     }
 
@@ -249,6 +210,15 @@ function registerPulse() {
       if (fl.petals[p].alive) { anyAlive = true; break; }
     }
     if (!anyAlive) fl.alive = false;
+  }
+
+  // drop loose petals
+  for (var i = 0; i < loosePetals.length; i++) {
+    var lp = loosePetals[i];
+    if (lp.alive && random() < 0.12) {
+      lp.alive = false;
+      fallenPetals.push(createFallenPetal(lp.x, lp.y, lp.size, lp.angle));
+    }
   }
 
   // gentle wind nudge on fallen petals
@@ -470,9 +440,17 @@ function draw() {
     branches[i].display();
   }
 
-  // ── LEAVES (wind tremble from pasted code) ────────────────
-  for (var i = 0; i < leaves.length; i++) {
-    leaves[i].display(windEnergy, windNoiseTime);
+  // ── LOOSE PETALS (small, sitting on branches) ──────────────
+  for (var i = 0; i < loosePetals.length; i++) {
+    var lp = loosePetals[i];
+    if (!lp.alive) continue;
+    if (pulseEnvelope > 0.01) {
+      var tx = (noise(lp.noiseSeed + t * 8) - 0.5) * TREMBLE_AMP * pulseEnvelope;
+      var ty = (noise(lp.noiseSeed + 500 + t * 8) - 0.5) * TREMBLE_AMP * pulseEnvelope;
+      drawPetal(lp.homeX + tx, lp.homeY + ty, lp.size, lp.angle);
+    } else {
+      drawPetal(lp.homeX, lp.homeY, lp.size, lp.angle);
+    }
   }
 
   // ── FLOWERS ───────────────────────────────────────────────
