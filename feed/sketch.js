@@ -44,11 +44,8 @@ var currentDeviceIndex = 0;
 
 // Background FX
 var currentMsgType = "positive"; // positive, authoritative, suspicious
-var calmDots = [];               // floating dots for calm bg
-var authLineSpread = 0;          // 0-1, how far lines have spread
-var authLineTarget = 0;
-var NUM_CALM_DOTS = 40;
-var NUM_AUTH_LINES = 12;
+var NUM_WAVES = 6;
+var WAVE_STEP = 3; // pixel step for drawing waves
 
 // ── EASING ──────────────────────────────────────────────────────
 // ease in-out cubic
@@ -71,17 +68,6 @@ function setup() {
   currentMsg.startTime = -TRANSITION_MS; // already settled
   currentMsg.y = center.y;
   currentMsg.msgType = "positive";
-
-  // init calm dots
-  for (var i = 0; i < NUM_CALM_DOTS; i++) {
-    calmDots.push({
-      x: random(-containerRadius, containerRadius),
-      y: random(-containerRadius, containerRadius),
-      vx: random(-0.3, 0.3),
-      vy: random(-0.3, 0.3),
-      seed: random(1000)
-    });
-  }
 
   stateTimer = millis();
   getVideoDevices();
@@ -246,95 +232,85 @@ function draw() {
 function drawBackgroundFX(now) {
   var t = now * 0.001;
 
-  if (currentMsgType === "positive") {
-    drawCalmDots(t);
-  } else if (currentMsgType === "authoritative") {
-    drawAuthLines(t);
-  } else if (currentMsgType === "suspicious") {
-    drawSuspiciousWaves(t);
-  }
-
-  // decay auth lines
-  if (currentMsgType === "authoritative") {
-    authLineSpread = lerp(authLineSpread, authLineTarget, 0.15); // fast attack
-  } else {
-    authLineSpread = lerp(authLineSpread, 0, 0.02); // slow decay
-    authLineTarget = 0;
-  }
-}
-
-// ── CALM: floating 2px dots drifting randomly ───────────────────
-function drawCalmDots(t) {
-  noStroke();
-  fill(0);
-
-  for (var i = 0; i < calmDots.length; i++) {
-    var d = calmDots[i];
-
-    // gentle perlin drift
-    d.vx += (noise(d.seed + t * 0.3) - 0.5) * 0.02;
-    d.vy += (noise(d.seed + 500 + t * 0.3) - 0.5) * 0.02;
-    d.vx *= 0.98;
-    d.vy *= 0.98;
-    d.x += d.vx;
-    d.y += d.vy;
-
-    // keep inside circle
-    var dd = sqrt(d.x * d.x + d.y * d.y);
-    if (dd > containerRadius - 5) {
-      d.x *= 0.95;
-      d.y *= 0.95;
-      d.vx *= -0.5;
-      d.vy *= -0.5;
-    }
-
-    rect(center.x + round(d.x), center.y + round(d.y), 2, 2);
-  }
-}
-
-// ── AUTHORITATIVE: vertical lines spread from center ────────────
-function drawAuthLines(t) {
-  if (authLineSpread < 0.01) return;
-
-  stroke(0);
-  strokeWeight(1);
-
-  var maxSpread = containerRadius * 0.9;
-  var spread = authLineSpread * maxSpread;
-
-  for (var i = 0; i < NUM_AUTH_LINES; i++) {
-    // lines evenly distributed, spreading from center
-    var frac = (i / (NUM_AUTH_LINES - 1)) * 2 - 1; // -1 to 1
-    var lx = center.x + frac * spread;
-
-    // vertical line clipped by circle
-    var dx = abs(frac * spread);
-    if (dx < containerRadius) {
-      var halfH = sqrt(containerRadius * containerRadius - dx * dx);
-      line(lx, center.y - halfH, lx, center.y + halfH);
-    }
-  }
-}
-
-// ── SUSPICIOUS: perlin noise waves ──────────────────────────────
-function drawSuspiciousWaves(t) {
   noFill();
   stroke(0);
   strokeWeight(1);
 
-  var numWaves = 5;
-  var waveSpacing = containerRadius * 2 / (numWaves + 1);
+  if (currentMsgType === "positive") {
+    drawSineWaves(t);
+  } else if (currentMsgType === "authoritative") {
+    drawSawtoothWaves(t);
+  } else if (currentMsgType === "suspicious") {
+    drawPerlinWaves(t);
+  }
+}
 
-  for (var w = 0; w < numWaves; w++) {
+// ── CALM: gentle sine waves ─────────────────────────────────────
+function drawSineWaves(t) {
+  var waveSpacing = containerRadius * 2 / (NUM_WAVES + 1);
+  var amp = 15;
+  var freq = 0.04;
+
+  for (var w = 0; w < NUM_WAVES; w++) {
     var baseY = center.y - containerRadius + (w + 1) * waveSpacing;
 
     beginShape();
-    for (var x = -containerRadius; x <= containerRadius; x += 3) {
-      var dx = x;
-      var maxY = sqrt(max(0, containerRadius * containerRadius - dx * dx));
-      var wy = baseY + noise(x * 0.02 + w * 10 + t * 0.8) * 40 - 20;
+    for (var x = -containerRadius; x <= containerRadius; x += WAVE_STEP) {
+      var maxY = sqrt(max(0, containerRadius * containerRadius - x * x));
+      var wy = baseY + sin(x * freq + t * 0.8 + w * 1.2) * amp;
 
-      // only draw if inside circle
+      if (abs(wy - center.y) < maxY) {
+        vertex(center.x + x, wy);
+      }
+    }
+    endShape();
+  }
+}
+
+// ── AUTHORITATIVE: sharp sawtooth waves ─────────────────────────
+function drawSawtoothWaves(t) {
+  var waveSpacing = containerRadius * 2 / (NUM_WAVES + 1);
+  var amp = 25;
+  var period = 60; // pixels per tooth
+
+  for (var w = 0; w < NUM_WAVES; w++) {
+    var baseY = center.y - containerRadius + (w + 1) * waveSpacing;
+    var phase = t * 40 + w * period * 0.3;
+
+    beginShape();
+    for (var x = -containerRadius; x <= containerRadius; x += WAVE_STEP) {
+      var maxY = sqrt(max(0, containerRadius * containerRadius - x * x));
+
+      // sawtooth: linear ramp then snap
+      var pos = ((x + phase) % period + period) % period;
+      var saw = (pos / period) * 2 - 1; // -1 to 1 linear ramp
+      var wy = baseY + saw * amp;
+
+      if (abs(wy - center.y) < maxY) {
+        vertex(center.x + x, wy);
+      }
+    }
+    endShape();
+  }
+}
+
+// ── SUSPICIOUS: perlin noise waves (grandiose) ──────────────────
+function drawPerlinWaves(t) {
+  var waveSpacing = containerRadius * 2 / (NUM_WAVES + 1);
+  var amp = 50;
+
+  for (var w = 0; w < NUM_WAVES; w++) {
+    var baseY = center.y - containerRadius + (w + 1) * waveSpacing;
+
+    beginShape();
+    for (var x = -containerRadius; x <= containerRadius; x += WAVE_STEP) {
+      var maxY = sqrt(max(0, containerRadius * containerRadius - x * x));
+
+      // layered perlin for more drama
+      var n1 = noise(x * 0.015 + w * 10 + t * 0.6) * 2 - 1;
+      var n2 = noise(x * 0.04 + w * 5 + t * 1.2) * 2 - 1;
+      var wy = baseY + (n1 * amp + n2 * amp * 0.4);
+
       if (abs(wy - center.y) < maxY) {
         vertex(center.x + x, wy);
       }
