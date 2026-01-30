@@ -42,6 +42,14 @@ var lastPulseMs = 0;
 var devices = [];
 var currentDeviceIndex = 0;
 
+// Background FX
+var currentMsgType = "positive"; // positive, authoritative, suspicious
+var calmDots = [];               // floating dots for calm bg
+var authLineSpread = 0;          // 0-1, how far lines have spread
+var authLineTarget = 0;
+var NUM_CALM_DOTS = 40;
+var NUM_AUTH_LINES = 12;
+
 // ── EASING ──────────────────────────────────────────────────────
 // ease in-out cubic
 function easeInOut(t) {
@@ -62,18 +70,31 @@ function setup() {
   currentMsg = makeMsg("SYSTEM READY");
   currentMsg.startTime = -TRANSITION_MS; // already settled
   currentMsg.y = center.y;
+  currentMsg.msgType = "positive";
+
+  // init calm dots
+  for (var i = 0; i < NUM_CALM_DOTS; i++) {
+    calmDots.push({
+      x: random(-containerRadius, containerRadius),
+      y: random(-containerRadius, containerRadius),
+      vx: random(-0.3, 0.3),
+      vy: random(-0.3, 0.3),
+      seed: random(1000)
+    });
+  }
 
   stateTimer = millis();
   getVideoDevices();
 }
 
-function makeMsg(txt) {
+function makeMsg(txt, msgType) {
   return {
     text: txt,
     y: center.y + containerRadius + CARD_H,
     startY: center.y + containerRadius + CARD_H,
     targetY: center.y,
-    startTime: millis()
+    startTime: millis(),
+    msgType: msgType || "none"
   };
 }
 
@@ -96,7 +117,21 @@ function triggerNewMessageSequence() {
     var chosenType = types[floor(random(types.length))];
     var pool = thoughts[chosenType];
     var txt = pool[floor(random(pool.length))];
-    pushNewMessage(txt);
+    currentMsgType = chosenType;
+    var msg = makeMsg(txt, chosenType);
+    // do the push manually so we can pass type
+    if (currentMsg) {
+      outgoingMsg = currentMsg;
+      outgoingMsg.startY = outgoingMsg.y;
+      outgoingMsg.targetY = center.y - containerRadius - CARD_H;
+      outgoingMsg.startTime = millis();
+    }
+    currentMsg = msg;
+
+    // trigger authoritative line burst
+    if (chosenType === "authoritative") {
+      authLineTarget = 1;
+    }
    }, 2000);
 }
 
@@ -140,6 +175,9 @@ function draw() {
   drawingContext.beginPath();
   drawingContext.arc(center.x, center.y, containerRadius - 1, 0, TWO_PI);
   drawingContext.clip();
+
+  // ── BACKGROUND FX ───────────────────────────────────────
+  drawBackgroundFX(now);
 
   // ── OUTGOING MESSAGE ──────────────────────────────────────
   if (outgoingMsg) {
@@ -201,6 +239,108 @@ function draw() {
   textFont('Courier New');
   textAlign(CENTER, BOTTOM);
   text('SPACE / TAP to pulse', width / 2, height - 16);
+}
+
+// ── BACKGROUND FX ───────────────────────────────────────────────
+
+function drawBackgroundFX(now) {
+  var t = now * 0.001;
+
+  if (currentMsgType === "positive") {
+    drawCalmDots(t);
+  } else if (currentMsgType === "authoritative") {
+    drawAuthLines(t);
+  } else if (currentMsgType === "suspicious") {
+    drawSuspiciousWaves(t);
+  }
+
+  // decay auth lines
+  if (currentMsgType === "authoritative") {
+    authLineSpread = lerp(authLineSpread, authLineTarget, 0.15); // fast attack
+  } else {
+    authLineSpread = lerp(authLineSpread, 0, 0.02); // slow decay
+    authLineTarget = 0;
+  }
+}
+
+// ── CALM: floating 2px dots drifting randomly ───────────────────
+function drawCalmDots(t) {
+  noStroke();
+  fill(0);
+
+  for (var i = 0; i < calmDots.length; i++) {
+    var d = calmDots[i];
+
+    // gentle perlin drift
+    d.vx += (noise(d.seed + t * 0.3) - 0.5) * 0.02;
+    d.vy += (noise(d.seed + 500 + t * 0.3) - 0.5) * 0.02;
+    d.vx *= 0.98;
+    d.vy *= 0.98;
+    d.x += d.vx;
+    d.y += d.vy;
+
+    // keep inside circle
+    var dd = sqrt(d.x * d.x + d.y * d.y);
+    if (dd > containerRadius - 5) {
+      d.x *= 0.95;
+      d.y *= 0.95;
+      d.vx *= -0.5;
+      d.vy *= -0.5;
+    }
+
+    rect(center.x + round(d.x), center.y + round(d.y), 2, 2);
+  }
+}
+
+// ── AUTHORITATIVE: vertical lines spread from center ────────────
+function drawAuthLines(t) {
+  if (authLineSpread < 0.01) return;
+
+  stroke(0);
+  strokeWeight(1);
+
+  var maxSpread = containerRadius * 0.9;
+  var spread = authLineSpread * maxSpread;
+
+  for (var i = 0; i < NUM_AUTH_LINES; i++) {
+    // lines evenly distributed, spreading from center
+    var frac = (i / (NUM_AUTH_LINES - 1)) * 2 - 1; // -1 to 1
+    var lx = center.x + frac * spread;
+
+    // vertical line clipped by circle
+    var dx = abs(frac * spread);
+    if (dx < containerRadius) {
+      var halfH = sqrt(containerRadius * containerRadius - dx * dx);
+      line(lx, center.y - halfH, lx, center.y + halfH);
+    }
+  }
+}
+
+// ── SUSPICIOUS: perlin noise waves ──────────────────────────────
+function drawSuspiciousWaves(t) {
+  noFill();
+  stroke(0);
+  strokeWeight(1);
+
+  var numWaves = 5;
+  var waveSpacing = containerRadius * 2 / (numWaves + 1);
+
+  for (var w = 0; w < numWaves; w++) {
+    var baseY = center.y - containerRadius + (w + 1) * waveSpacing;
+
+    beginShape();
+    for (var x = -containerRadius; x <= containerRadius; x += 3) {
+      var dx = x;
+      var maxY = sqrt(max(0, containerRadius * containerRadius - dx * dx));
+      var wy = baseY + noise(x * 0.02 + w * 10 + t * 0.8) * 40 - 20;
+
+      // only draw if inside circle
+      if (abs(wy - center.y) < maxY) {
+        vertex(center.x + x, wy);
+      }
+    }
+    endShape();
+  }
 }
 
 // ── 90s GAME SPEECH BUBBLE ──────────────────────────────────────
