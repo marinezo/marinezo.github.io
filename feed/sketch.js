@@ -16,11 +16,11 @@ var containerRadius;
 var currentMsg = null;
 var outgoingMsg = null;
 var stateTimer = 0;
-var minDuration = 3000;
+var minDuration = 10000;
 
 var CARD_H = 120;
 var CORNER_R = 40;
-var TRANSITION_MS = 800; // duration of slide animation
+var TRANSITION_MS = 1500; // duration of slide animation
 
 var thoughts = {
   positive: ["ENERGY OPTIMAL", "SYNC COMPLETE", "VIBES DETECTED", "CALM STATE", "RHYTHM GOOD"],
@@ -97,7 +97,7 @@ function triggerNewMessageSequence() {
     var pool = thoughts[chosenType];
     var txt = pool[floor(random(pool.length))];
     pushNewMessage(txt);
-  }, 1500);
+   }, 2000);
 }
 
 function animateY(msg, now) {
@@ -145,10 +145,10 @@ function draw() {
   if (outgoingMsg) {
     animateY(outgoingMsg, now);
     var elapsed = now - outgoingMsg.startTime;
-    if (elapsed > TRANSITION_MS + 200) {
+    if (elapsed > TRANSITION_MS + 1000) {
       outgoingMsg = null;
     } else {
-      var fadeZone = containerRadius * 0.5;
+      var fadeZone = containerRadius * 1;
       var distFromCenter = abs(outgoingMsg.y - center.y);
       var alpha = 1;
       if (distFromCenter > fadeZone) {
@@ -196,7 +196,7 @@ function draw() {
 
   // ── INSTRUCTIONS ──────────────────────────────────────────
   noStroke();
-  fill(180);
+  fill(0);
   textSize(10);
   textFont('Courier New');
   textAlign(CENTER, BOTTOM);
@@ -206,7 +206,13 @@ function draw() {
 // ── 90s GAME SPEECH BUBBLE ──────────────────────────────────────
 
 function drawBubble(cx, cy, txt) {
-  var w = containerRadius * 1.64;
+  var dy = abs(cy - center.y);
+  var maxHalfW = containerRadius * .7;
+  if (dy < containerRadius) {
+    var chord = sqrt(containerRadius * containerRadius - dy * dy);
+    maxHalfW = min(maxHalfW, chord - 2);
+  }
+  var w = max(100, maxHalfW * 2);
   var h = CARD_H;
   var r = min(CORNER_R, h / 2);
 
@@ -215,7 +221,7 @@ function drawBubble(cx, cy, txt) {
   fill(0);
   noStroke();
   rectMode(CENTER);
-  rect(cx + 2, cy + 2, w, h, r);
+  rect(cx + 0, cy + 8, w, h, r);
 
   // main bubble
   fill(255);
@@ -229,7 +235,7 @@ function drawBubble(cx, cy, txt) {
   noStroke();
   textFont('Courier New');
   textAlign(CENTER, CENTER);
-  textStyle(BOLD);
+  textStyle();
 
   if (txt === "...") {
     // pixel dots
