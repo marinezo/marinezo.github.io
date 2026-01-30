@@ -230,54 +230,64 @@ function draw() {
 
 // ── BACKGROUND FX ───────────────────────────────────────────────
 
+var WAVE_CIRCLE_R = 35; // radius of the small wave circle
+
 function drawBackgroundFX(now) {
   var t = now * 0.001;
 
   // morph toward current type
   waveMorph = min(1, waveMorph + 0.015);
 
+  // position: above the current message bubble
+  var wcx = center.x;
+  var wcy = center.y - CARD_H * 0.5 - WAVE_CIRCLE_R - 20;
+
+  // border circle
+  noFill();
+  stroke(0);
+  strokeWeight(1);
+  ellipse(wcx, wcy, WAVE_CIRCLE_R * 2, WAVE_CIRCLE_R * 2);
+
+  // clip to wave circle
+  drawingContext.save();
+  drawingContext.beginPath();
+  drawingContext.arc(wcx, wcy, WAVE_CIRCLE_R - 1, 0, TWO_PI);
+  drawingContext.clip();
+
+  // single wave line inside the small circle
   noFill();
   stroke(0);
   strokeWeight(1);
 
-  var waveSpacing = containerRadius * 2 / (NUM_WAVES + 1);
-
-  for (var w = 0; w < NUM_WAVES; w++) {
-    var baseY = center.y - containerRadius + (w + 1) * waveSpacing;
-
-    beginShape();
-    for (var x = -containerRadius; x <= containerRadius; x += WAVE_STEP) {
-      var maxY = sqrt(max(0, containerRadius * containerRadius - x * x));
-
-      var yPrev = getWaveY(prevMsgType, x, w, t, baseY);
-      var yCurr = getWaveY(currentMsgType, x, w, t, baseY);
-      var wy = yPrev + (yCurr - yPrev) * waveMorph;
-
-      if (abs(wy - center.y) < maxY) {
-        vertex(center.x + x, wy);
-      }
-    }
-    endShape();
+  beginShape();
+  for (var x = -WAVE_CIRCLE_R; x <= WAVE_CIRCLE_R; x += 2) {
+    var yPrev = getWaveY(prevMsgType, x, 0, t, wcy);
+    var yCurr = getWaveY(currentMsgType, x, 0, t, wcy);
+    var wy = yPrev + (yCurr - yPrev) * waveMorph;
+    vertex(wcx + x, wy);
   }
+  endShape();
+
+  drawingContext.restore();
 }
 
 // returns the wave y-offset for a given type at position x
 function getWaveY(msgType, x, w, t, baseY) {
   if (msgType === "positive") {
-    // sine
-    return baseY + sin(x * 0.04 + t * 0.8 + w * 1.2) * 15;
+    // sine - gentle
+    return baseY + sin(x * 0.08 + t * 0.8 + w * 1.2) * 10;
   } else if (msgType === "authoritative") {
-    // sawtooth
-    var period = 60;
+    // sawtooth - sharp
+    var period = 30;
     var phase = t * 40 + w * period * 0.3;
     var pos = ((x + phase) % period + period) % period;
     var saw = (pos / period) * 2 - 1;
-    return baseY + saw * 25;
+    return baseY + saw * 15;
   } else {
-    // perlin
-    var n1 = noise(x * 0.015 + w * 10 + t * 0.6) * 2 - 1;
-    var n2 = noise(x * 0.04 + w * 5 + t * 1.2) * 2 - 1;
-    return baseY + (n1 * 50 + n2 * 20);
+    // perlin - erratic
+    var n1 = noise(x * 0.03 + w * 10 + t * 0.6) * 2 - 1;
+    var n2 = noise(x * 0.08 + w * 5 + t * 1.2) * 2 - 1;
+    return baseY + (n1 * 20 + n2 * 8);
   }
 }
 
