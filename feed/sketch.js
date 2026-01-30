@@ -44,6 +44,8 @@ var currentDeviceIndex = 0;
 
 // Background FX
 var currentMsgType = "positive"; // positive, authoritative, suspicious
+var prevMsgType = "positive";
+var waveMorph = 1;              // 0 = showing prevType, 1 = showing currentType
 var NUM_WAVES = 6;
 var WAVE_STEP = 3; // pixel step for drawing waves
 
@@ -103,6 +105,10 @@ function triggerNewMessageSequence() {
     var chosenType = types[floor(random(types.length))];
     var pool = thoughts[chosenType];
     var txt = pool[floor(random(pool.length))];
+    if (chosenType !== currentMsgType) {
+      prevMsgType = currentMsgType;
+      waveMorph = 0; // start morphing
+    }
     currentMsgType = chosenType;
     var msg = makeMsg(txt, chosenType);
     // do the push manually so we can pass type
@@ -113,11 +119,6 @@ function triggerNewMessageSequence() {
       outgoingMsg.startTime = millis();
     }
     currentMsg = msg;
-
-    // trigger authoritative line burst
-    if (chosenType === "authoritative") {
-      authLineTarget = 1;
-    }
    }, 2000);
 }
 
@@ -232,24 +233,14 @@ function draw() {
 function drawBackgroundFX(now) {
   var t = now * 0.001;
 
+  // morph toward current type
+  waveMorph = min(1, waveMorph + 0.015);
+
   noFill();
   stroke(0);
   strokeWeight(1);
 
-  if (currentMsgType === "positive") {
-    drawSineWaves(t);
-  } else if (currentMsgType === "authoritative") {
-    drawSawtoothWaves(t);
-  } else if (currentMsgType === "suspicious") {
-    drawPerlinWaves(t);
-  }
-}
-
-// ── CALM: gentle sine waves ─────────────────────────────────────
-function drawSineWaves(t) {
   var waveSpacing = containerRadius * 2 / (NUM_WAVES + 1);
-  var amp = 15;
-  var freq = 0.04;
 
   for (var w = 0; w < NUM_WAVES; w++) {
     var baseY = center.y - containerRadius + (w + 1) * waveSpacing;
@@ -257,7 +248,10 @@ function drawSineWaves(t) {
     beginShape();
     for (var x = -containerRadius; x <= containerRadius; x += WAVE_STEP) {
       var maxY = sqrt(max(0, containerRadius * containerRadius - x * x));
-      var wy = baseY + sin(x * freq + t * 0.8 + w * 1.2) * amp;
+
+      var yPrev = getWaveY(prevMsgType, x, w, t, baseY);
+      var yCurr = getWaveY(currentMsgType, x, w, t, baseY);
+      var wy = yPrev + (yCurr - yPrev) * waveMorph;
 
       if (abs(wy - center.y) < maxY) {
         vertex(center.x + x, wy);
@@ -267,55 +261,23 @@ function drawSineWaves(t) {
   }
 }
 
-// ── AUTHORITATIVE: sharp sawtooth waves ─────────────────────────
-function drawSawtoothWaves(t) {
-  var waveSpacing = containerRadius * 2 / (NUM_WAVES + 1);
-  var amp = 25;
-  var period = 60; // pixels per tooth
-
-  for (var w = 0; w < NUM_WAVES; w++) {
-    var baseY = center.y - containerRadius + (w + 1) * waveSpacing;
+// returns the wave y-offset for a given type at position x
+function getWaveY(msgType, x, w, t, baseY) {
+  if (msgType === "positive") {
+    // sine
+    return baseY + sin(x * 0.04 + t * 0.8 + w * 1.2) * 15;
+  } else if (msgType === "authoritative") {
+    // sawtooth
+    var period = 60;
     var phase = t * 40 + w * period * 0.3;
-
-    beginShape();
-    for (var x = -containerRadius; x <= containerRadius; x += WAVE_STEP) {
-      var maxY = sqrt(max(0, containerRadius * containerRadius - x * x));
-
-      // sawtooth: linear ramp then snap
-      var pos = ((x + phase) % period + period) % period;
-      var saw = (pos / period) * 2 - 1; // -1 to 1 linear ramp
-      var wy = baseY + saw * amp;
-
-      if (abs(wy - center.y) < maxY) {
-        vertex(center.x + x, wy);
-      }
-    }
-    endShape();
-  }
-}
-
-// ── SUSPICIOUS: perlin noise waves (grandiose) ──────────────────
-function drawPerlinWaves(t) {
-  var waveSpacing = containerRadius * 2 / (NUM_WAVES + 1);
-  var amp = 50;
-
-  for (var w = 0; w < NUM_WAVES; w++) {
-    var baseY = center.y - containerRadius + (w + 1) * waveSpacing;
-
-    beginShape();
-    for (var x = -containerRadius; x <= containerRadius; x += WAVE_STEP) {
-      var maxY = sqrt(max(0, containerRadius * containerRadius - x * x));
-
-      // layered perlin for more drama
-      var n1 = noise(x * 0.015 + w * 10 + t * 0.6) * 2 - 1;
-      var n2 = noise(x * 0.04 + w * 5 + t * 1.2) * 2 - 1;
-      var wy = baseY + (n1 * amp + n2 * amp * 0.4);
-
-      if (abs(wy - center.y) < maxY) {
-        vertex(center.x + x, wy);
-      }
-    }
-    endShape();
+    var pos = ((x + phase) % period + period) % period;
+    var saw = (pos / period) * 2 - 1;
+    return baseY + saw * 25;
+  } else {
+    // perlin
+    var n1 = noise(x * 0.015 + w * 10 + t * 0.6) * 2 - 1;
+    var n2 = noise(x * 0.04 + w * 5 + t * 1.2) * 2 - 1;
+    return baseY + (n1 * 50 + n2 * 20);
   }
 }
 
