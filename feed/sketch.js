@@ -1,8 +1,9 @@
 /* PROJECT: Somatic_Secrets_Feed
    - One message centered in circle at a time
-   - New message pushes old one up and out
+   - New message pushes old one up and out (ease in-out)
    - "..." appears briefly before real message
-   - Rounded rectangle, no tail
+   - 90s game speech bubble style
+   - Pixel heart + BPM at bottom
    - Mouse press / SPACE triggers pulse
    - Camera pulse detection
 */
@@ -12,14 +13,14 @@ var center;
 var containerRadius;
 
 // Messages
-var currentMsg = null;   // the visible message
-var outgoingMsg = null;  // the one being pushed out
-var pendingText = null;  // scheduled real text after "..."
+var currentMsg = null;
+var outgoingMsg = null;
 var stateTimer = 0;
 var minDuration = 3000;
 
-var CARD_H = 70;
-var CORNER_R = 22;
+var CARD_H = 120;
+var CORNER_R = 40;
+var TRANSITION_MS = 800; // duration of slide animation
 
 var thoughts = {
   positive: ["ENERGY OPTIMAL", "SYNC COMPLETE", "VIBES DETECTED", "CALM STATE", "RHYTHM GOOD"],
@@ -33,10 +34,22 @@ var maxReadings = 20;
 var lastBeatTime = 0;
 var beatThreshold = 1.4;
 var indicatorFill = 0;
+var bpm = 0;
+var bpmHistory = [];
+var lastPulseMs = 0;
 
 // Camera
 var devices = [];
 var currentDeviceIndex = 0;
+
+// ── EASING ──────────────────────────────────────────────────────
+// ease in-out cubic
+function easeInOut(t) {
+  if (t < 0) return 0;
+  if (t > 1) return 1;
+  if (t < 0.5) return 4 * t * t * t;
+  return 1 - pow(-2 * t + 2, 3) / 2;
+}
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -47,6 +60,7 @@ function setup() {
   containerRadius = min(width, height) * 0.40;
 
   currentMsg = makeMsg("SYSTEM READY");
+  currentMsg.startTime = -TRANSITION_MS; // already settled
   currentMsg.y = center.y;
 
   stateTimer = millis();
@@ -56,36 +70,40 @@ function setup() {
 function makeMsg(txt) {
   return {
     text: txt,
-    y: center.y + containerRadius + CARD_H, // starts below
+    y: center.y + containerRadius + CARD_H,
+    startY: center.y + containerRadius + CARD_H,
     targetY: center.y,
-    speed: 0.08
+    startTime: millis()
   };
 }
 
 function pushNewMessage(txt) {
-  // current becomes outgoing (push up)
   if (currentMsg) {
     outgoingMsg = currentMsg;
-    outgoingMsg.targetY = center.y - containerRadius - CARD_H; // exit top
-    outgoingMsg.speed = 0.08;
+    outgoingMsg.startY = outgoingMsg.y;
+    outgoingMsg.targetY = center.y - containerRadius - CARD_H;
+    outgoingMsg.startTime = millis();
   }
 
-  // new one enters from bottom
   currentMsg = makeMsg(txt);
 }
 
 function triggerNewMessageSequence() {
-  // first show "..."
   pushNewMessage("...");
 
-  // then after delay, push real message
   setTimeout(function() {
     var types = ["positive", "authoritative", "suspicious"];
     var chosenType = types[floor(random(types.length))];
     var pool = thoughts[chosenType];
     var txt = pool[floor(random(pool.length))];
     pushNewMessage(txt);
-  }, 1200);
+  }, 1500);
+}
+
+function animateY(msg, now) {
+  var elapsed = now - msg.startTime;
+  var t = easeInOut(elapsed / TRANSITION_MS);
+  msg.y = msg.startY + (msg.targetY - msg.startY) * t;
 }
 
 function draw() {
@@ -123,17 +141,14 @@ function draw() {
   drawingContext.arc(center.x, center.y, containerRadius - 1, 0, TWO_PI);
   drawingContext.clip();
 
-  // ── ANIMATE + DRAW MESSAGES ───────────────────────────────
-
-  // outgoing (sliding up and out)
+  // ── OUTGOING MESSAGE ──────────────────────────────────────
   if (outgoingMsg) {
-    outgoingMsg.y = lerp(outgoingMsg.y, outgoingMsg.targetY, outgoingMsg.speed);
-    var distOut = abs(outgoingMsg.y - outgoingMsg.targetY);
-    if (distOut < 2) {
-      outgoingMsg = null; // gone
+    animateY(outgoingMsg, now);
+    var elapsed = now - outgoingMsg.startTime;
+    if (elapsed > TRANSITION_MS + 200) {
+      outgoingMsg = null;
     } else {
-      // fade as it exits
-      var fadeZone = containerRadius * 0.6;
+      var fadeZone = containerRadius * 0.5;
       var distFromCenter = abs(outgoingMsg.y - center.y);
       var alpha = 1;
       if (distFromCenter > fadeZone) {
@@ -141,17 +156,29 @@ function draw() {
       }
       if (alpha > 0.01) {
         drawingContext.globalAlpha = alpha;
-        drawRoundedCard(center.x, outgoingMsg.y, outgoingMsg.text);
+        drawBubble(center.x, outgoingMsg.y, outgoingMsg.text);
         drawingContext.globalAlpha = 1;
       }
     }
   }
 
-  // current (sliding to center)
+  // ── CURRENT MESSAGE ───────────────────────────────────────
   if (currentMsg) {
-    currentMsg.y = lerp(currentMsg.y, currentMsg.targetY, currentMsg.speed);
-    drawRoundedCard(center.x, currentMsg.y, currentMsg.text);
+    animateY(currentMsg, now);
+    drawBubble(center.x, currentMsg.y, currentMsg.text);
   }
+
+  // ── HEART + BPM ───────────────────────────────────────────
+  var heartY = containerRadius * 0.65;
+  drawPixelHeart(center.x - 24, center.y + heartY, 10);
+
+  fill(0);
+  noStroke();
+  textAlign(LEFT, CENTER);
+  textSize(14);
+  textFont('Courier New');
+  var bpmStr = bpm > 0 ? str(bpm) : '--';
+  text(bpmStr, center.x - 4, center.y + heartY);
 
   drawingContext.restore();
 
@@ -176,58 +203,102 @@ function draw() {
   text('SPACE / TAP to pulse', width / 2, height - 16);
 }
 
-// ── ROUNDED CARD ────────────────────────────────────────────────
+// ── 90s GAME SPEECH BUBBLE ──────────────────────────────────────
 
-function drawRoundedCard(cx, cy, txt) {
-  // width based on chord at this y
+function drawBubble(cx, cy, txt) {
   var dy = abs(cy - center.y);
-  var maxHalfW = containerRadius * 0.8;
+  var maxHalfW = containerRadius * 0.82;
   if (dy < containerRadius) {
     var chord = sqrt(containerRadius * containerRadius - dy * dy);
-    maxHalfW = min(maxHalfW, chord - 15);
+    maxHalfW = min(maxHalfW, chord - 12);
   }
-  var w = max(80, maxHalfW * 2);
+  var w = max(100, maxHalfW * 2);
   var h = CARD_H;
-  var r = min(CORNER_R, h / 2, w / 4);
+  var r = min(CORNER_R, h / 2);
 
+  // ── outer bubble shape (double border 90s style) ──────────
+  // shadow / outer border
+  fill(0);
+  noStroke();
+  rectMode(CENTER);
+  rect(cx + 2, cy + 2, w, h, r);
+
+  // main bubble
   fill(255);
   stroke(0);
   strokeWeight(1);
-  rectMode(CENTER);
   rect(cx, cy, w, h, r);
   rectMode(CORNER);
 
-  // text
+  // ── text ──────────────────────────────────────────────────
   fill(0);
   noStroke();
   textFont('Courier New');
   textAlign(CENTER, CENTER);
+  textStyle(BOLD);
 
   if (txt === "...") {
     // pixel dots
-    var dotS = 4;
-    var spacing = 12;
+    var dotS = 5;
+    var spacing = 16;
     for (var d = -1; d <= 1; d++) {
       rect(cx + d * spacing - dotS / 2, cy - dotS / 2, dotS, dotS);
     }
   } else {
-    textSize(15);
-    textStyle(BOLD);
+    textSize(20);
     text(txt, cx, cy - 1);
-    textStyle(NORMAL);
+  }
+  textStyle(NORMAL);
+}
+
+// ── PIXEL HEART ─────────────────────────────────────────────────
+
+function drawPixelHeart(px, py, s) {
+  var grid = [
+    [0,1,1,0,1,1,0],
+    [1,1,1,1,1,1,1],
+    [1,1,1,1,1,1,1],
+    [0,1,1,1,1,1,0],
+    [0,0,1,1,1,0,0],
+    [0,0,0,1,0,0,0]
+  ];
+  var ps = max(1, floor(s / 5));
+  noStroke();
+  fill(0);
+  for (var row = 0; row < grid.length; row++) {
+    for (var col = 0; col < grid[row].length; col++) {
+      if (grid[row][col]) {
+        rect(px + (col - 3) * ps, py + (row - 3) * ps, ps, ps);
+      }
+    }
   }
 }
 
 // ── INPUT ───────────────────────────────────────────────────────
 
 function registerPulse() {
-  lastBeatTime = millis();
+  var now = millis();
+
+  // BPM calculation
+  if (lastPulseMs > 0) {
+    var interval = now - lastPulseMs;
+    if (interval > 250 && interval < 3000) {
+      bpmHistory.push(60000 / interval);
+      if (bpmHistory.length > 6) bpmHistory.shift();
+      var sum = 0;
+      for (var i = 0; i < bpmHistory.length; i++) sum += bpmHistory[i];
+      bpm = round(sum / bpmHistory.length);
+    }
+  }
+  lastPulseMs = now;
+
+  lastBeatTime = now;
   indicatorFill = 1;
 
-  var timeSinceLast = millis() - stateTimer;
+  var timeSinceLast = now - stateTimer;
   if (timeSinceLast > minDuration) {
     triggerNewMessageSequence();
-    stateTimer = millis();
+    stateTimer = now;
   }
 }
 
