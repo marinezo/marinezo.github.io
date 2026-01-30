@@ -206,13 +206,7 @@ function draw() {
 // ── 90s GAME SPEECH BUBBLE ──────────────────────────────────────
 
 function drawBubble(cx, cy, txt) {
-  var dy = abs(cy - center.y);
-  var maxHalfW = containerRadius * 0.82;
-  if (dy < containerRadius) {
-    var chord = sqrt(containerRadius * containerRadius - dy * dy);
-    maxHalfW = min(maxHalfW, chord - 12);
-  }
-  var w = max(100, maxHalfW * 2);
+  var w = containerRadius * 1.64;
   var h = CARD_H;
   var r = min(CORNER_R, h / 2);
 
