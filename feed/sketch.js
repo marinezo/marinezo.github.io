@@ -2,7 +2,7 @@
    - One message centered in circle at a time
    - New message pushes old one up and out (ease in-out)
    - "..." appears briefly before real message
-   - 90s game speech bubble style
+   - Bowed pill speech bubble (1px stroke, white fill)
    - Pixel heart + BPM at bottom
    - Mouse press / SPACE triggers pulse
    - Camera pulse detection
@@ -338,11 +338,12 @@ function drawBowedPill(cx, cy, w, h, bow, offY) {
   endShape(CLOSE);
 }
 
-function drawBubble(cx, cy, txt) {
+function drawBubble(bx, by, txt) {
   var baseW = WATCH_R * 1.2;
   var h = CARD_H;
 
-  var dy = min(abs(cy - cy), WATCH_R - 1);
+  // narrow bubble when near circle edge
+  var dy = min(abs(by - cy), WATCH_R - 1);
   var chord = sqrt(WATCH_R * WATCH_R - dy * dy) * 2;
   var ratio = chord / (WATCH_R * 2);
   var narrowFactor = lerp(1, ratio, 0.25);
@@ -352,36 +353,29 @@ function drawBubble(cx, cy, txt) {
   bowWobbleT += 0.005;
   var bow = 12 + (noise(bowWobbleT) * 2 - 1) * 5;
 
-  // shadow
-  fill(0);
-  noStroke();
-  drawBowedPill(cx, cy, w, h, bow, 6);
-
-  // main pill
+  // main pill — 1px stroke, white fill, no shadow
   fill(255);
   stroke(0);
   strokeWeight(1);
-  drawBowedPill(cx, cy, w, h, bow, 0);
+  drawBowedPill(bx, by, w, h, bow, 0);
 
   // ── text ──────────────────────────────────────────────────
   fill(0);
   noStroke();
   textFont('monospace');
   textAlign(CENTER, CENTER);
-  textStyle();
 
-  var textY = cy + bow * 0.5; // offset text to match bow center
+  var textY = by + bow * 0.5;
   if (txt === "...") {
     var dotS = 5;
     var spacing = 16;
     for (var d = -1; d <= 1; d++) {
-      rect(cx + d * spacing - dotS / 2, textY - dotS / 2, dotS, dotS);
+      rect(bx + d * spacing - dotS / 2, textY - dotS / 2, dotS, dotS);
     }
   } else {
-    textSize(20);
-    text(txt, cx, textY);
+    textSize(14);
+    text(txt, bx, textY);
   }
-  textStyle(NORMAL);
 }
 
 // ── PIXEL HEART ─────────────────────────────────────────────────
@@ -496,7 +490,7 @@ function gotDevices(deviceInfos) {
 
     var btn = createButton('Switch Cam');
     btn.position(20, height - 40);
-    btn.style('font-family', 'Courier New');
+    btn.style('font-family', 'monospace');
     btn.style('font-weight', 'bold');
     btn.style('color', 'black');
     btn.style('background', 'white');
@@ -521,6 +515,6 @@ function startCamera(id) {
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  cx = width / 2;
-  cy = height / 2;
+  cx = round(width / 2);
+  cy = round(height / 2);
 }
