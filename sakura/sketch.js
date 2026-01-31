@@ -67,7 +67,7 @@ function createFallenPetal(x, y, size, ang) {
     vy: random(-1.0, 0.3),
     size: size,
     angle: ang,
-    spin: random(-0.02, 0.02),
+    spin: random(-0.005, 0.005),
     noiseSeed: random(1000),
     bornAt: millis(),
     opacity: 1
@@ -228,7 +228,7 @@ function registerPulse() {
     var ang = atan2(fp.y, fp.x) + HALF_PI; // perpendicular = swirl direction
     fp.vx += cos(ang) * random(0.4, 1.2) + random(-0.3, 0.3);
     fp.vy += sin(ang) * random(0.4, 1.2) + random(-0.3, -0.05);
-    fp.spin += random(-0.015, 0.015);
+    fp.spin += random(-0.004, 0.004);
   }
 }
 
@@ -380,7 +380,7 @@ function draw() {
       fp.vx += cos(swirlAng) * 0.08 * pulseEnvelope;
       fp.vy += sin(swirlAng) * 0.08 * pulseEnvelope;
       fp.vx += (noise(fp.noiseSeed + t * 3) - 0.5) * 0.2 * pulseEnvelope;
-      fp.spin += (noise(fp.noiseSeed + 200 + t * 4) - 0.5) * 0.01 * pulseEnvelope;
+      fp.spin += (noise(fp.noiseSeed + 200 + t * 4) - 0.5) * 0.003 * pulseEnvelope;
     }
 
     // contain inside circle
@@ -539,7 +539,7 @@ function drawFlower(fl, t, scale) {
 
 // ── DRAW FALLEN PETAL (single, with opacity) ────────────────────
 function drawFallenPetal(fp, t) {
-  var a = fp.angle + sin(t * 2 + fp.noiseSeed) * 0.25;
+  var a = fp.angle + sin(t * 2 + fp.noiseSeed) * 0.1;
 
   if (fp.opacity < 1) {
     drawingContext.globalAlpha = max(0, fp.opacity);
