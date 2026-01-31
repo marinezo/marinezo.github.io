@@ -291,67 +291,7 @@ function getWaveY(msgType, x, w, t, baseY) {
   }
 }
 
-// ── CURVED ROUNDED-RECT SPEECH BUBBLE ───────────────────────────
-
-var bubbleWobbleT = 0;
-
-function drawCurvedRect(cx, cy, w, h, r, curve, alcoveR, shadowOff) {
-  // Rounded rectangle with fully ellipsed corners.
-  // Both sides bow inward symmetrically by `curve` amount,
-  // like a soft pillow pinched in the middle.
-  // Top has a smooth alcove notch for the wave circle.
-
-  var halfW = w / 2;
-  var halfH = h / 2;
-  r = min(r, halfW, halfH);
-
-  var steps = 80;
-  var pts = [];
-
-  for (var i = 0; i < steps; i++) {
-    var t = i / steps;
-    var px, py;
-
-    if (t < 0.25) {
-      // top edge, left to right
-      var s = t / 0.25;
-      px = -halfW + r + s * (w - 2 * r);
-      py = -halfH;
-      // alcove dip for wave circle
-      var nx = px / (alcoveR + 6);
-      if (abs(nx) < 1) {
-        py -= (1 - nx * nx) * alcoveR * 0.5;
-      }
-    } else if (t < 0.5) {
-      // right side, top to bottom
-      var s = (t - 0.25) / 0.25;
-      px = halfW;
-      py = -halfH + r + s * (h - 2 * r);
-      // symmetric inward bow
-      px -= sin(s * PI) * halfW * curve;
-    } else if (t < 0.75) {
-      // bottom edge, right to left
-      var s = (t - 0.5) / 0.25;
-      px = halfW - r - s * (w - 2 * r);
-      py = halfH;
-    } else {
-      // left side, bottom to top
-      var s = (t - 0.75) / 0.25;
-      px = -halfW;
-      py = halfH - r - s * (h - 2 * r);
-      // symmetric inward bow (mirrors right)
-      px += sin(s * PI) * halfW * curve;
-    }
-
-    pts.push({ x: cx + px, y: cy + py + (shadowOff || 0) });
-  }
-
-  beginShape();
-  for (var j = steps - 3; j < steps; j++) curveVertex(pts[j].x, pts[j].y);
-  for (var i = 0; i < steps; i++) curveVertex(pts[i].x, pts[i].y);
-  for (var j = 0; j < 3; j++) curveVertex(pts[j].x, pts[j].y);
-  endShape(CLOSE);
-}
+// ── PILL SPEECH BUBBLE ──────────────────────────────────────────
 
 function drawBubble(cx, cy, txt) {
   var baseW = containerRadius * 1.2;
@@ -364,24 +304,20 @@ function drawBubble(cx, cy, txt) {
   var narrowFactor = lerp(1, ratio, 0.25);
   var w = max(80, baseW * narrowFactor);
 
-  var r = 30; // corner rounding
-
-  // slow random wobble on the curve
-  bubbleWobbleT += 0.005;
-  var curve = 0.08 + (noise(bubbleWobbleT) * 2 - 1) * 0.03;
-
-  var alcoveR = WAVE_CIRCLE_R;
+  var r = h / 2; // fully rounded ends = pill shape
 
   // shadow
   fill(0);
   noStroke();
-  drawCurvedRect(cx, cy, w, h, r, curve, alcoveR, 6);
+  rectMode(CENTER);
+  rect(cx, cy + 6, w, h, r);
 
-  // main shape
+  // main pill
   fill(255);
   stroke(0);
   strokeWeight(1);
-  drawCurvedRect(cx, cy, w, h, r, curve, alcoveR, 0);
+  rect(cx, cy, w, h, r);
+  rectMode(CORNER);
 
   // ── text ──────────────────────────────────────────────────
   fill(0);
