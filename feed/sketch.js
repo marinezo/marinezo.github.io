@@ -230,7 +230,7 @@ function draw() {
 
 // ── BACKGROUND FX ───────────────────────────────────────────────
 
-var WAVE_CIRCLE_R = 35; // radius of the small wave circle
+var WAVE_CIRCLE_R = 52; // radius of the small wave circle
 
 function drawBackgroundFX(now) {
   var t = now * 0.001;
@@ -240,7 +240,7 @@ function drawBackgroundFX(now) {
 
   // position: above the current message bubble
   var wcx = center.x;
-  var wcy = center.y - CARD_H * 0.5 - WAVE_CIRCLE_R - 20;
+  var wcy = center.y - CARD_H * 0.5 - WAVE_CIRCLE_R * 0.45;
 
   // border circle
   noFill();
@@ -291,84 +291,75 @@ function getWaveY(msgType, x, w, t, baseY) {
   }
 }
 
-// ── METABALL SPEECH BUBBLE ──────────────────────────────────────
+// ── BANANA / C-SHAPE SPEECH BUBBLE ─────────────────────────────
 
-var metaAngle = 0; // satellite orbit angle
+function drawBananaShape(cx, cy, w, h, alcoveR, alcoveGap, shadowOff) {
+  // A mild C / banana shape: wide rounded body with a concave alcove
+  // at the top center where the wave circle sits.
+  // Built from curveVertex points tracing the outline.
 
-function metaballField(px, py, blobs) {
-  var sum = 0;
-  for (var i = 0; i < blobs.length; i++) {
-    var b = blobs[i];
-    var dx = (px - b.x) / b.rx;
-    var dy = (py - b.y) / b.ry;
-    var d2 = dx * dx + dy * dy;
-    sum += 1 / (d2 + 0.0001);
-  }
-  return sum;
-}
+  var halfW = w / 2;
+  var halfH = h / 2;
+  var curveAmount = 0.12; // how curved the banana is (0 = flat, higher = more C)
 
-function drawMetaballContour(blobs, threshold, res, shadow) {
-  // marching squares on a grid to find the metaball contour
-  var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  for (var i = 0; i < blobs.length; i++) {
-    minX = min(minX, blobs[i].x - blobs[i].rx * 2);
-    maxX = max(maxX, blobs[i].x + blobs[i].rx * 2);
-    minY = min(minY, blobs[i].y - blobs[i].ry * 2);
-    maxY = max(maxY, blobs[i].y + blobs[i].ry * 2);
-  }
+  // alcove cutout params
+  var alcoveW = alcoveR + alcoveGap; // half-width of the concave dip
+  var alcoveD = alcoveR * 0.55; // how deep the alcove dips into the body
 
-  // sample field values on grid
-  var cols = ceil((maxX - minX) / res);
-  var rows = ceil((maxY - minY) / res);
-  var field = [];
-  for (var r = 0; r <= rows; r++) {
-    field[r] = [];
-    for (var c = 0; c <= cols; c++) {
-      var px = minX + c * res;
-      var py = minY + r * res;
-      field[r][c] = metaballField(px, py, blobs);
-    }
-  }
-
-  // collect contour points using angle from centroid
-  var cx = 0, cy = 0;
-  for (var i = 0; i < blobs.length; i++) { cx += blobs[i].x; cy += blobs[i].y; }
-  cx /= blobs.length; cy /= blobs.length;
-
+  var steps = 60;
   var pts = [];
-  for (var r = 0; r < rows; r++) {
-    for (var c = 0; c < cols; c++) {
-      // check each edge of the cell for threshold crossing
-      var corners = [
-        { r: r, c: c }, { r: r, c: c+1 },
-        { r: r+1, c: c+1 }, { r: r+1, c: c }
-      ];
-      for (var e = 0; e < 4; e++) {
-        var c1 = corners[e];
-        var c2 = corners[(e+1) % 4];
-        var v1 = field[c1.r][c1.c];
-        var v2 = field[c2.r][c2.c];
-        if ((v1 >= threshold) !== (v2 >= threshold)) {
-          var t = (threshold - v1) / (v2 - v1);
-          var px = minX + (c1.c + (c2.c - c1.c) * t) * res;
-          var py = minY + (c1.r + (c2.r - c1.r) * t) * res;
-          var ang = atan2(py - cy, px - cx);
-          pts.push({ x: px, y: py + (shadow || 0), a: ang });
-        }
+
+  for (var i = 0; i <= steps; i++) {
+    var t = i / steps; // 0..1 around the perimeter
+
+    var px, py;
+
+    if (t <= 0.25) {
+      // right side, bottom to top
+      var s = t / 0.25; // 0..1
+      px = halfW;
+      py = halfH - s * h;
+      // mild inward curve (banana)
+      px -= sin(s * PI) * halfW * curveAmount;
+    } else if (t <= 0.5) {
+      // top edge, right to left
+      var s = (t - 0.25) / 0.25; // 0..1, right to left
+      px = halfW - s * w;
+      py = -halfH;
+      // alcove dip in the center
+      var distFromCenter = abs(px) / alcoveW;
+      if (distFromCenter < 1) {
+        var alcoveCurve = cos(distFromCenter * PI * 0.5);
+        py -= alcoveD * alcoveCurve * alcoveCurve;
       }
+    } else if (t <= 0.75) {
+      // left side, top to bottom
+      var s = (t - 0.5) / 0.25; // 0..1
+      px = -halfW;
+      py = -halfH + s * h;
+      // mild inward curve (banana)
+      px += sin(s * PI) * halfW * curveAmount;
+    } else {
+      // bottom edge, left to right
+      var s = (t - 0.75) / 0.25; // 0..1
+      px = -halfW + s * w;
+      py = halfH;
+      // mild convex bottom to match banana
+      py += sin(s * PI) * halfH * curveAmount * 0.3;
     }
+
+    pts.push({ x: cx + px, y: cy + py + (shadowOff || 0) });
   }
-
-  // sort by angle and draw
-  pts.sort(function(a, b) { return a.a - b.a; });
-
-  if (pts.length < 3) return;
 
   beginShape();
+  // prepend last few for smooth close
+  for (var j = pts.length - 3; j < pts.length; j++) {
+    curveVertex(pts[j].x, pts[j].y);
+  }
   for (var i = 0; i < pts.length; i++) {
     curveVertex(pts[i].x, pts[i].y);
   }
-  // close loop
+  // append first few for smooth close
   for (var j = 0; j < 3; j++) {
     curveVertex(pts[j].x, pts[j].y);
   }
@@ -376,44 +367,29 @@ function drawMetaballContour(blobs, threshold, res, shadow) {
 }
 
 function drawBubble(cx, cy, txt) {
-  var baseRX = containerRadius * 0.55;
-  var baseRY = CARD_H * 0.45;
+  var baseW = containerRadius * 1.2;
+  var h = CARD_H;
 
   // narrow slightly when near circle edge
   var dy = min(abs(cy - center.y), containerRadius - 1);
   var chord = sqrt(containerRadius * containerRadius - dy * dy) * 2;
   var ratio = chord / (containerRadius * 2);
   var narrowFactor = lerp(1, ratio, 0.25);
-  var rx = max(40, baseRX * narrowFactor);
-  var ry = baseRY;
+  var w = max(80, baseW * narrowFactor);
 
-  metaAngle += 0.008;
-
-  // satellite blob orbiting the main blob
-  var satDist = rx * 0.7;
-  var satX = cx + cos(metaAngle) * satDist;
-  var satY = cy + sin(metaAngle * 0.7) * ry * 0.5;
-  var satRX = rx * 0.35;
-  var satRY = ry * 0.5;
-
-  var blobs = [
-    { x: cx, y: cy, rx: rx, ry: ry },
-    { x: satX, y: satY, rx: satRX, ry: satRY }
-  ];
-
-  var threshold = 1.8;
-  var res = 3;
+  var alcoveR = WAVE_CIRCLE_R;
+  var alcoveGap = 8;
 
   // shadow
   fill(0);
   noStroke();
-  drawMetaballContour(blobs, threshold, res, 6);
+  drawBananaShape(cx, cy, w, h, alcoveR, alcoveGap, 6);
 
   // main shape
   fill(255);
   stroke(0);
   strokeWeight(1);
-  drawMetaballContour(blobs, threshold, res, 0);
+  drawBananaShape(cx, cy, w, h, alcoveR, alcoveGap, 0);
 
   // ── text ──────────────────────────────────────────────────
   fill(0);
@@ -430,7 +406,7 @@ function drawBubble(cx, cy, txt) {
     }
   } else {
     textSize(20);
-    text(txt, cx, cy - 1);
+    text(txt, cx, cy + 5);
   }
   textStyle(NORMAL);
 }
