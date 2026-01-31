@@ -160,34 +160,49 @@ function draw() {
   drawingContext.arc(cx, cy, WATCH_R - 1, 0, TWO_PI);
   drawingContext.clip();
 
-  // ── BACKGROUND FX ───────────────────────────────────────
-  drawBackgroundFX(now);
+  // ── WAVE BALL ──────────────────────────────────────────
+  drawWaveBall(now);
 
-  // ── OUTGOING MESSAGE ──────────────────────────────────────
+  // ── MESSAGE TEXT (plain, below ball) ───────────────────
+  fill(0);
+  noStroke();
+  textFont('monospace');
+  textSize(11);
+  textAlign(CENTER, TOP);
+
+  var textY = cy - 20 + WAVE_CIRCLE_R + 16;
+
   if (outgoingMsg) {
     animateY(outgoingMsg, now);
     var elapsed = now - outgoingMsg.startTime;
     if (elapsed > TRANSITION_MS + 1000) {
       outgoingMsg = null;
     } else {
-      var fadeZone = WATCH_R * 1;
       var distFromCenter = abs(outgoingMsg.y - cy);
-      var alpha = 1;
-      if (distFromCenter > fadeZone) {
-        alpha = max(0, 1 - (distFromCenter - fadeZone) / (WATCH_R - fadeZone));
-      }
+      var alpha = max(0, 1 - distFromCenter / WATCH_R);
       if (alpha > 0.01) {
         drawingContext.globalAlpha = alpha;
-        drawBubble(cx, outgoingMsg.y, outgoingMsg.text);
+        text(outgoingMsg.text, cx, outgoingMsg.y - 20 + WAVE_CIRCLE_R + 16);
         drawingContext.globalAlpha = 1;
       }
     }
   }
 
-  // ── CURRENT MESSAGE ───────────────────────────────────────
   if (currentMsg) {
     animateY(currentMsg, now);
-    drawBubble(cx, currentMsg.y, currentMsg.text);
+    var msgTxt = currentMsg.text;
+    if (msgTxt === "...") {
+      // pixel dots
+      var dotS = 4;
+      var spacing = 12;
+      fill(0);
+      noStroke();
+      for (var d = -1; d <= 1; d++) {
+        rect(cx + d * spacing - dotS / 2, textY - dotS / 2, dotS, dotS);
+      }
+    } else {
+      text(msgTxt, cx, textY);
+    }
   }
 
   // ── HEART + BPM ───────────────────────────────────────────
@@ -225,45 +240,74 @@ function draw() {
   text('SPACE / TAP to pulse', width / 2, height - 16);
 }
 
-// ── BACKGROUND FX ───────────────────────────────────────────────
+// ── WAVE BALL (glass sphere) ────────────────────────────────────
 
-var WAVE_CIRCLE_R = 52; // radius of the small wave circle
+var WAVE_CIRCLE_R = 70; // radius of the wave ball
 
-function drawBackgroundFX(now) {
+function drawWaveBall(now) {
   var t = now * 0.001;
 
   // morph toward current type
   waveMorph = min(1, waveMorph + 0.015);
 
-  // position: above the current message bubble
+  // position: centered, slightly above middle
   var wcx = cx;
-  var wcy = cy - CARD_H * 0.5 - WAVE_CIRCLE_R * 0.45;
+  var wcy = cy - 20;
 
-  // border circle
-  noFill();
-  stroke(0);
+  // rotation angle during transition (0 at rest, peaks at PI mid-morph)
+  var rotAng = 0;
+  if (waveMorph < 1) {
+    // sin curve: 0 → PI → 0 as waveMorph goes 0 → 1
+    rotAng = sin(waveMorph * PI) * PI;
+  }
+
+  // ── black filled sphere ──────────────────────────────────
+  fill(0);
+  stroke(255);
   strokeWeight(1);
   ellipse(wcx, wcy, WAVE_CIRCLE_R * 2, WAVE_CIRCLE_R * 2);
 
-  // clip to wave circle
+  // clip to ball
   drawingContext.save();
   drawingContext.beginPath();
   drawingContext.arc(wcx, wcy, WAVE_CIRCLE_R - 1, 0, TWO_PI);
   drawingContext.clip();
 
-  // single wave line inside the small circle
+  // ── wave line (white on black) ───────────────────────────
+  push();
+  translate(wcx, wcy);
+  rotate(rotAng);
+
   noFill();
-  stroke(0);
+  stroke(255);
   strokeWeight(1);
 
   beginShape();
   for (var x = -WAVE_CIRCLE_R; x <= WAVE_CIRCLE_R; x += 2) {
-    var yPrev = getWaveY(prevMsgType, x, 0, t, wcy);
-    var yCurr = getWaveY(currentMsgType, x, 0, t, wcy);
+    var yPrev = getWaveY(prevMsgType, x, 0, t, 0);
+    var yCurr = getWaveY(currentMsgType, x, 0, t, 0);
     var wy = yPrev + (yCurr - yPrev) * waveMorph;
-    vertex(wcx + x, wy);
+    vertex(x, wy);
   }
   endShape();
+
+  pop();
+
+  // ── glass highlights (white arcs on black) ───────────────
+  noFill();
+  stroke(255);
+
+  // top-left glint
+  strokeWeight(2);
+  arc(wcx - WAVE_CIRCLE_R * 0.3, wcy - WAVE_CIRCLE_R * 0.3,
+      WAVE_CIRCLE_R * 0.6, WAVE_CIRCLE_R * 0.6,
+      PI + 0.3, PI + 1.2);
+
+  // bottom-right reflection
+  strokeWeight(1);
+  arc(wcx + WAVE_CIRCLE_R * 0.15, wcy + WAVE_CIRCLE_R * 0.35,
+      WAVE_CIRCLE_R * 0.5, WAVE_CIRCLE_R * 0.5,
+      -0.3, 0.5);
 
   drawingContext.restore();
 }
