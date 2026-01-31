@@ -9,8 +9,8 @@
 */
 
 var video;
-var center;
-var containerRadius;
+var cx, cy;
+var WATCH_R = 200;
 
 // Messages
 var currentMsg = null;
@@ -63,12 +63,12 @@ function setup() {
   pixelDensity(1);
   noSmooth();
 
-  center = createVector(width / 2, height / 2);
-  containerRadius = min(width, height) * 0.40;
+  cx = width / 2;
+  cy = height / 2;
 
   currentMsg = makeMsg("SYSTEM READY");
   currentMsg.startTime = -TRANSITION_MS; // already settled
-  currentMsg.y = center.y;
+  currentMsg.y = cy;
   currentMsg.msgType = "positive";
 
   stateTimer = millis();
@@ -78,9 +78,9 @@ function setup() {
 function makeMsg(txt, msgType) {
   return {
     text: txt,
-    y: center.y + containerRadius + CARD_H,
-    startY: center.y + containerRadius + CARD_H,
-    targetY: center.y,
+    y: cy + WATCH_R + CARD_H,
+    startY: cy + WATCH_R + CARD_H,
+    targetY: cy,
     startTime: millis(),
     msgType: msgType || "none"
   };
@@ -90,7 +90,7 @@ function pushNewMessage(txt) {
   if (currentMsg) {
     outgoingMsg = currentMsg;
     outgoingMsg.startY = outgoingMsg.y;
-    outgoingMsg.targetY = center.y - containerRadius - CARD_H;
+    outgoingMsg.targetY = cy - WATCH_R - CARD_H;
     outgoingMsg.startTime = millis();
   }
 
@@ -115,7 +115,7 @@ function triggerNewMessageSequence() {
     if (currentMsg) {
       outgoingMsg = currentMsg;
       outgoingMsg.startY = outgoingMsg.y;
-      outgoingMsg.targetY = center.y - containerRadius - CARD_H;
+      outgoingMsg.targetY = cy - WATCH_R - CARD_H;
       outgoingMsg.startTime = millis();
     }
     currentMsg = msg;
@@ -155,12 +155,12 @@ function draw() {
   noFill();
   stroke(0);
   strokeWeight(1);
-  ellipse(center.x, center.y, containerRadius * 2, containerRadius * 2);
+  ellipse(cx, cy, WATCH_R * 2, WATCH_R * 2);
 
   // ── CLIP ──────────────────────────────────────────────────
   drawingContext.save();
   drawingContext.beginPath();
-  drawingContext.arc(center.x, center.y, containerRadius - 1, 0, TWO_PI);
+  drawingContext.arc(cx, cy, WATCH_R - 1, 0, TWO_PI);
   drawingContext.clip();
 
   // ── BACKGROUND FX ───────────────────────────────────────
@@ -173,15 +173,15 @@ function draw() {
     if (elapsed > TRANSITION_MS + 1000) {
       outgoingMsg = null;
     } else {
-      var fadeZone = containerRadius * 1;
-      var distFromCenter = abs(outgoingMsg.y - center.y);
+      var fadeZone = WATCH_R * 1;
+      var distFromCenter = abs(outgoingMsg.y - cy);
       var alpha = 1;
       if (distFromCenter > fadeZone) {
-        alpha = max(0, 1 - (distFromCenter - fadeZone) / (containerRadius - fadeZone));
+        alpha = max(0, 1 - (distFromCenter - fadeZone) / (WATCH_R - fadeZone));
       }
       if (alpha > 0.01) {
         drawingContext.globalAlpha = alpha;
-        drawBubble(center.x, outgoingMsg.y, outgoingMsg.text);
+        drawBubble(cx, outgoingMsg.y, outgoingMsg.text);
         drawingContext.globalAlpha = 1;
       }
     }
@@ -190,26 +190,26 @@ function draw() {
   // ── CURRENT MESSAGE ───────────────────────────────────────
   if (currentMsg) {
     animateY(currentMsg, now);
-    drawBubble(center.x, currentMsg.y, currentMsg.text);
+    drawBubble(cx, currentMsg.y, currentMsg.text);
   }
 
   // ── HEART + BPM ───────────────────────────────────────────
-  var heartY = containerRadius * 0.65;
-  drawPixelHeart(center.x - 24, center.y + heartY, 10);
+  var heartY = WATCH_R * 0.62;
+  drawPixelHeart(cx - 24, cy + heartY, 10);
 
   fill(0);
   noStroke();
   textAlign(LEFT, CENTER);
   textSize(14);
-  textFont('Courier New');
+  textFont('monospace');
   var bpmStr = bpm > 0 ? str(bpm) : '--';
-  text(bpmStr, center.x - 4, center.y + heartY);
+  text(bpmStr, cx - 4, cy + heartY);
 
   drawingContext.restore();
 
   // ── INDICATOR DOT ─────────────────────────────────────────
-  var indX = center.x - containerRadius - 30;
-  var indY = center.y - containerRadius - 30;
+  var indX = cx - WATCH_R - 30;
+  var indY = cy - WATCH_R - 30;
   stroke(0);
   strokeWeight(1);
   if (indicatorFill > 0.5) {
@@ -221,9 +221,9 @@ function draw() {
 
   // ── INSTRUCTIONS ──────────────────────────────────────────
   noStroke();
-  fill(0);
+  fill(180);
   textSize(10);
-  textFont('Courier New');
+  textFont('monospace');
   textAlign(CENTER, BOTTOM);
   text('SPACE / TAP to pulse', width / 2, height - 16);
 }
@@ -239,8 +239,8 @@ function drawBackgroundFX(now) {
   waveMorph = min(1, waveMorph + 0.015);
 
   // position: above the current message bubble
-  var wcx = center.x;
-  var wcy = center.y - CARD_H * 0.5 - WAVE_CIRCLE_R * 0.45;
+  var wcx = cx;
+  var wcy = cy - CARD_H * 0.5 - WAVE_CIRCLE_R * 0.45;
 
   // border circle
   noFill();
@@ -342,12 +342,12 @@ function drawBowedPill(cx, cy, w, h, bow, offY) {
 }
 
 function drawBubble(cx, cy, txt) {
-  var baseW = containerRadius * 1.2;
+  var baseW = WATCH_R * 1.2;
   var h = CARD_H;
 
-  var dy = min(abs(cy - center.y), containerRadius - 1);
-  var chord = sqrt(containerRadius * containerRadius - dy * dy) * 2;
-  var ratio = chord / (containerRadius * 2);
+  var dy = min(abs(cy - cy), WATCH_R - 1);
+  var chord = sqrt(WATCH_R * WATCH_R - dy * dy) * 2;
+  var ratio = chord / (WATCH_R * 2);
   var narrowFactor = lerp(1, ratio, 0.25);
   var w = max(80, baseW * narrowFactor);
 
@@ -369,7 +369,7 @@ function drawBubble(cx, cy, txt) {
   // ── text ──────────────────────────────────────────────────
   fill(0);
   noStroke();
-  textFont('Courier New');
+  textFont('monospace');
   textAlign(CENTER, CENTER);
   textStyle();
 
@@ -524,6 +524,6 @@ function startCamera(id) {
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  center = createVector(width / 2, height / 2);
-  containerRadius = min(width, height) * 0.40;
+  cx = width / 2;
+  cy = height / 2;
 }
