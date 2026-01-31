@@ -18,7 +18,6 @@ var bpm = 0;
 var bpmHistory = [];
 var lastPulseMs = 0;
 
-// Camera
 var manualPulse = false;
 
 // Camera
