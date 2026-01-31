@@ -293,73 +293,43 @@ function getWaveY(msgType, x, w, t, baseY) {
 
 // ── BANANA / C-SHAPE SPEECH BUBBLE ─────────────────────────────
 
-function drawBananaShape(cx, cy, w, h, alcoveR, alcoveGap, shadowOff) {
-  // A mild C / banana shape: wide rounded body with a concave alcove
-  // at the top center where the wave circle sits.
-  // Built from curveVertex points tracing the outline.
+var bananaWobbleT = 0;
 
-  var halfW = w / 2;
-  var halfH = h / 2;
-  var curveAmount = 0.12; // how curved the banana is (0 = flat, higher = more C)
+function drawBananaShape(cx, cy, rx, ry, alcoveR, wobble, shadowOff) {
+  // A proper C / banana: an ellipse whose top edge dips inward
+  // to cradle the wave circle. The whole shape bends mildly
+  // like a banana via a sine displacement on x.
+  // wobble adds slow random curvature drift.
 
-  // alcove cutout params
-  var alcoveW = alcoveR + alcoveGap; // half-width of the concave dip
-  var alcoveD = alcoveR * 0.55; // how deep the alcove dips into the body
-
-  var steps = 60;
+  var steps = 80;
   var pts = [];
 
-  for (var i = 0; i <= steps; i++) {
-    var t = i / steps; // 0..1 around the perimeter
+  for (var i = 0; i < steps; i++) {
+    var a = map(i, 0, steps, 0, TWO_PI);
+    var px = cos(a) * rx;
+    var py = sin(a) * ry;
 
-    var px, py;
+    // banana bend: push the middle inward on x (C shape)
+    // strongest at top and bottom (sin of angle), curving the sides
+    var bend = 0.08 + wobble * 0.04;
+    px += sin(a) * rx * bend;
 
-    if (t <= 0.25) {
-      // right side, bottom to top
-      var s = t / 0.25; // 0..1
-      px = halfW;
-      py = halfH - s * h;
-      // mild inward curve (banana)
-      px -= sin(s * PI) * halfW * curveAmount;
-    } else if (t <= 0.5) {
-      // top edge, right to left
-      var s = (t - 0.25) / 0.25; // 0..1, right to left
-      px = halfW - s * w;
-      py = -halfH;
-      // alcove dip in the center
-      var distFromCenter = abs(px) / alcoveW;
-      if (distFromCenter < 1) {
-        var alcoveCurve = cos(distFromCenter * PI * 0.5);
-        py -= alcoveD * alcoveCurve * alcoveCurve;
-      }
-    } else if (t <= 0.75) {
-      // left side, top to bottom
-      var s = (t - 0.5) / 0.25; // 0..1
-      px = -halfW;
-      py = -halfH + s * h;
-      // mild inward curve (banana)
-      px += sin(s * PI) * halfW * curveAmount;
-    } else {
-      // bottom edge, left to right
-      var s = (t - 0.75) / 0.25; // 0..1
-      px = -halfW + s * w;
-      py = halfH;
-      // mild convex bottom to match banana
-      py += sin(s * PI) * halfH * curveAmount * 0.3;
-    }
+    // alcove: when near the top (a ~ -PI/2), dip inward
+    // use a smooth gaussian-like bump
+    var topness = exp(-pow((a + HALF_PI) / 0.6, 2));
+    if (a > PI) topness = exp(-pow((a - TWO_PI + HALF_PI) / 0.6, 2));
+    py += topness * alcoveR * 0.6;
 
     pts.push({ x: cx + px, y: cy + py + (shadowOff || 0) });
   }
 
   beginShape();
-  // prepend last few for smooth close
-  for (var j = pts.length - 3; j < pts.length; j++) {
+  for (var j = steps - 3; j < steps; j++) {
     curveVertex(pts[j].x, pts[j].y);
   }
-  for (var i = 0; i < pts.length; i++) {
+  for (var i = 0; i < steps; i++) {
     curveVertex(pts[i].x, pts[i].y);
   }
-  // append first few for smooth close
   for (var j = 0; j < 3; j++) {
     curveVertex(pts[j].x, pts[j].y);
   }
@@ -367,29 +337,33 @@ function drawBananaShape(cx, cy, w, h, alcoveR, alcoveGap, shadowOff) {
 }
 
 function drawBubble(cx, cy, txt) {
-  var baseW = containerRadius * 1.2;
-  var h = CARD_H;
+  var baseRX = containerRadius * 0.6;
+  var baseRY = CARD_H * 0.5;
 
   // narrow slightly when near circle edge
   var dy = min(abs(cy - center.y), containerRadius - 1);
   var chord = sqrt(containerRadius * containerRadius - dy * dy) * 2;
   var ratio = chord / (containerRadius * 2);
   var narrowFactor = lerp(1, ratio, 0.25);
-  var w = max(80, baseW * narrowFactor);
+  var rx = max(40, baseRX * narrowFactor);
+  var ry = baseRY;
+
+  // slow random wobble for the bend
+  bananaWobbleT += 0.005;
+  var wobble = noise(bananaWobbleT) * 2 - 1; // -1..1
 
   var alcoveR = WAVE_CIRCLE_R;
-  var alcoveGap = 8;
 
   // shadow
   fill(0);
   noStroke();
-  drawBananaShape(cx, cy, w, h, alcoveR, alcoveGap, 6);
+  drawBananaShape(cx, cy, rx, ry, alcoveR, wobble, 6);
 
   // main shape
   fill(255);
   stroke(0);
   strokeWeight(1);
-  drawBananaShape(cx, cy, w, h, alcoveR, alcoveGap, 0);
+  drawBananaShape(cx, cy, rx, ry, alcoveR, wobble, 0);
 
   // ── text ──────────────────────────────────────────────────
   fill(0);
