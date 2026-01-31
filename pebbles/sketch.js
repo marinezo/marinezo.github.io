@@ -175,20 +175,38 @@ BlobBubble.prototype.checkBoundary = function() {
 };
 
 BlobBubble.prototype.display = function() {
-  fill(255);
-  stroke(0);
-  strokeWeight(1);
-  beginShape();
-  var vertexStep = map(this.radius, 5, 24, 0.6, 0.3);
-  for (var angle = 0; angle <= TWO_PI + 0.1; angle += vertexStep) {
+  // Draw using raw canvas for crisp 1px strokes (no anti-alias)
+  var ctx = drawingContext;
+  ctx.imageSmoothingEnabled = false;
+
+  // build points
+  var pts = [];
+  var steps = floor(map(this.radius, 5, 24, 8, 16));
+  for (var i = 0; i < steps; i++) {
+    var angle = (i / steps) * TWO_PI;
     var wobbleRange = map(this.radius, 5, 24, 1, 4);
     var rOff = map(noise(cos(angle) + 1, sin(angle) + 1, this.noiseOffset), 0, 1, -wobbleRange, wobbleRange);
     var r = this.radius + rOff;
-    var x = round(this.pos.x + r * cos(angle));
-    var y = round(this.pos.y + r * sin(angle));
-    curveVertex(x, y);
+    pts.push({
+      x: round(this.pos.x + r * cos(angle)) + 0.5,
+      y: round(this.pos.y + r * sin(angle)) + 0.5
+    });
   }
-  endShape(CLOSE);
+
+  // fill white
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (var i = 1; i < pts.length; i++) {
+    ctx.lineTo(pts[i].x, pts[i].y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+
+  // stroke black 1px
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = 1;
+  ctx.stroke();
 };
 
 // ── PULSE ───────────────────────────────────────────────────────
