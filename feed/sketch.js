@@ -331,7 +331,7 @@ function drawBowedPill(cx, cy, w, h, bow, offY) {
   // apply bow: shift y based on x position
   for (var i = 0; i < pts.length; i++) {
     var nx = pts[i].x / halfW; // -1..1
-    pts[i].y -= bow * (1 - nx * nx);
+    pts[i].y += bow * (1 - nx * nx);
   }
 
   beginShape();
@@ -373,15 +373,16 @@ function drawBubble(cx, cy, txt) {
   textAlign(CENTER, CENTER);
   textStyle();
 
+  var textY = cy + bow * 0.5; // offset text to match bow center
   if (txt === "...") {
     var dotS = 5;
     var spacing = 16;
     for (var d = -1; d <= 1; d++) {
-      rect(cx + d * spacing - dotS / 2, cy - dotS / 2, dotS, dotS);
+      rect(cx + d * spacing - dotS / 2, textY - dotS / 2, dotS, dotS);
     }
   } else {
     textSize(20);
-    text(txt, cx, cy + 5);
+    text(txt, cx, textY);
   }
   textStyle(NORMAL);
 }
