@@ -291,31 +291,59 @@ function getWaveY(msgType, x, w, t, baseY) {
   }
 }
 
-// ── 90s GAME SPEECH BUBBLE ──────────────────────────────────────
+// ── PERLIN BLOB SPEECH BUBBLE ───────────────────────────────────
+
+var blobSeed = 0; // slow-moving seed for noise
+
+function drawBlobShape(cx, cy, rx, ry, detail, noiseScale, noiseAmp, seed) {
+  beginShape();
+  for (var i = 0; i < detail; i++) {
+    var a = map(i, 0, detail, 0, TWO_PI);
+    var n = noise(cos(a) * noiseScale + seed, sin(a) * noiseScale + seed);
+    var rx2 = rx + n * noiseAmp - noiseAmp * 0.5;
+    var ry2 = ry + n * noiseAmp - noiseAmp * 0.5;
+    var x = cx + cos(a) * rx2;
+    var y = cy + sin(a) * ry2;
+    curveVertex(x, y);
+  }
+  // close smoothly — repeat first 3 points
+  for (var j = 0; j < 3; j++) {
+    var a2 = map(j, 0, detail, 0, TWO_PI);
+    var n2 = noise(cos(a2) * noiseScale + seed, sin(a2) * noiseScale + seed);
+    var rxx = rx + n2 * noiseAmp - noiseAmp * 0.5;
+    var ryy = ry + n2 * noiseAmp - noiseAmp * 0.5;
+    curveVertex(cx + cos(a2) * rxx, cy + sin(a2) * ryy);
+  }
+  endShape(CLOSE);
+}
 
 function drawBubble(cx, cy, txt) {
-  var baseW = containerRadius * 1.4;
+  var baseRX = containerRadius * 0.65;
+  var baseRY = CARD_H * 0.5;
+
+  // narrow slightly when near circle edge
   var dy = min(abs(cy - center.y), containerRadius - 1);
   var chord = sqrt(containerRadius * containerRadius - dy * dy) * 2;
   var ratio = chord / (containerRadius * 2);
   var narrowFactor = lerp(1, ratio, 0.25);
-  var w = max(80, baseW * narrowFactor);
-  var h = CARD_H;
-  var r = min(CORNER_R, h / 2);
+  var rx = max(40, baseRX * narrowFactor);
+  var ry = baseRY;
 
-  // ── outer bubble shape (double border 90s style) ──────────
-  // shadow / outer border
+  blobSeed += 0.003;
+  var detail = 80;
+  var noiseScale = 1.5;
+  var noiseAmp = 18;
+
+  // shadow blob
   fill(0);
   noStroke();
-  rectMode(CENTER);
-  rect(cx + 0, cy + 8, w, h, r);
+  drawBlobShape(cx, cy + 6, rx, ry, detail, noiseScale, noiseAmp, blobSeed);
 
-  // main bubble
+  // main blob
   fill(255);
   stroke(0);
   strokeWeight(1);
-  rect(cx, cy, w, h, r);
-  rectMode(CORNER);
+  drawBlobShape(cx, cy, rx, ry, detail, noiseScale, noiseAmp, blobSeed);
 
   // ── text ──────────────────────────────────────────────────
   fill(0);
