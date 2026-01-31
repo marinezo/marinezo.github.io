@@ -2,10 +2,10 @@
    THEME: Somatic Dashboard / Diagnostic Quadrants
    AESTHETIC: White bg, Black 1px contours
    - Cross divides circle into 4 quadrants
-   - Each quadrant: animated icon + number + label
-   - Q1 (top-left): barrel with water level
-   - Q2 (top-right): metaball morphing to diamond
-   - Q3 (bottom-left): worm sine chain
+   - Each quadrant: animated icon (centered) + big number + small label (bottom)
+   - Q1 (top-left): 3D barrel with water level
+   - Q2 (top-right): squishy metaball morphing to diamond
+   - Q3 (bottom-left): worm sine chain (tight circles)
    - Q4 (bottom-right): scattered dots (free ↔ assembled)
 */
 
@@ -30,12 +30,11 @@ var devices = [];
 var currentDeviceIndex = 0;
 
 // ── QUADRANT DATA ───────────────────────────────────────────────
-// Each quadrant cycles through values on pulse
 var quads = [
-  { value: 0, targetValue: 72,  label: "HYDRA",  format: "int" },    // barrel
-  { value: 0, targetValue: 1.2, label: "COHERE", format: "float" },  // metaball
-  { value: 0, targetValue: 88,  label: "RHYTHM", format: "int" },    // worm
-  { value: 0, targetValue: 0.7, label: "FIELD",  format: "float" }   // dots
+  { value: 72,  targetValue: 72,  label: "HYDRA",  format: "int" },
+  { value: 1.2, targetValue: 1.2, label: "COHERE", format: "float" },
+  { value: 88,  targetValue: 88,  label: "RHYTHM", format: "int" },
+  { value: 0.7, targetValue: 0.7, label: "FIELD",  format: "float" }
 ];
 
 var quadLabels = [
@@ -50,20 +49,21 @@ var waterLevel = 0.5;
 var waterTarget = 0.5;
 
 // Q2: metaball → diamond morph
-var morphT = 0;       // 0 = blob, 1 = diamond
+var morphT = 0;
 var morphDir = 1;
 var blobNoiseTime = 0;
+var squishT = 0; // squishy wobble time
 
 // Q3: worm
 var wormPhase = 0;
-var wormSpeed = 0.03;
-var wormAmp = 12;
-var WORM_SEGMENTS = 8;
+var wormSpeed = 0.05;
+var wormAmp = 14;
+var WORM_SEGMENTS = 10;
 
 // Q4: dots
 var dots = [];
-var NUM_DOTS = 25;
-var dotsMode = 0; // 0 = free wander, 1 = concentrated assembly
+var NUM_DOTS = 30;
+var dotsMode = 0;
 var dotsModeTimer = 0;
 
 function setup() {
@@ -71,20 +71,16 @@ function setup() {
   cx = round(width / 2);
   cy = round(height / 2);
 
-  // init quad values
-  for (var i = 0; i < quads.length; i++) {
-    quads[i].value = quads[i].targetValue;
-  }
   waterLevel = 0.5;
   waterTarget = 0.5;
 
   // init dots for Q4
   for (var i = 0; i < NUM_DOTS; i++) {
     dots.push({
-      x: random(-30, 30),
-      y: random(-30, 30),
-      vx: random(-0.5, 0.5),
-      vy: random(-0.5, 0.5),
+      x: random(-35, 35),
+      y: random(-35, 35),
+      vx: random(-1, 1),
+      vy: random(-1, 1),
       noiseSeed: random(1000)
     });
   }
@@ -120,12 +116,13 @@ function draw() {
   morphT += 0.008 * morphDir;
   if (morphT > 1) { morphT = 1; morphDir = -1; }
   if (morphT < 0) { morphT = 0; morphDir = 1; }
-  blobNoiseTime += 0.02;
+  blobNoiseTime += 0.03;
+  squishT += 0.06;
 
   // worm
   wormPhase += wormSpeed;
 
-  // dots mode
+  // dots mode auto-switch
   if (now - dotsModeTimer > 4000) {
     dotsMode = 1 - dotsMode;
     dotsModeTimer = now;
@@ -146,48 +143,43 @@ function draw() {
   // ── CROSS ─────────────────────────────────────────────────
   stroke(0);
   strokeWeight(1);
-  // vertical
   line(cx, cy - CROSS_LEN, cx, cy + CROSS_LEN);
-  // horizontal
   line(cx - CROSS_LEN, cy, cx + CROSS_LEN, cy);
 
   // ── QUADRANTS ─────────────────────────────────────────────
-  // quadrant centers (offset from cx,cy)
-  var qOff = 65; // distance from center to quadrant center
+  var qOff = 65;
   var qCenters = [
-    { x: cx - qOff, y: cy - qOff }, // top-left: barrel
-    { x: cx + qOff, y: cy - qOff }, // top-right: metaball
-    { x: cx - qOff, y: cy + qOff }, // bottom-left: worm
-    { x: cx + qOff, y: cy + qOff }  // bottom-right: dots
+    { x: cx - qOff, y: cy - qOff },
+    { x: cx + qOff, y: cy - qOff },
+    { x: cx - qOff, y: cy + qOff },
+    { x: cx + qOff, y: cy + qOff }
   ];
 
-  // draw each quadrant
-  drawBarrel(qCenters[0].x, qCenters[0].y, t);
-  drawMetaball(qCenters[1].x, qCenters[1].y, t);
-  drawWorm(qCenters[2].x, qCenters[2].y, t);
-  drawDots(qCenters[3].x, qCenters[3].y, t);
+  // draw icons (centered in quadrant)
+  drawBarrel(qCenters[0].x, qCenters[0].y - 10, t);
+  drawMetaball(qCenters[1].x, qCenters[1].y - 10, t);
+  drawWorm(qCenters[2].x, qCenters[2].y - 10, t);
+  drawDots(qCenters[3].x, qCenters[3].y - 10, t);
 
-  // draw numbers and labels
+  // draw numbers (big) and labels (small) at bottom of quadrant
   fill(0);
   noStroke();
   textFont('monospace');
-  textAlign(CENTER, CENTER);
 
   for (var i = 0; i < 4; i++) {
     var qx = qCenters[i].x;
     var qy = qCenters[i].y;
 
-    // number
-    textSize(14);
+    // big number
+    textAlign(CENTER, CENTER);
+    textSize(22);
     var val = quads[i].value;
     var valStr = quads[i].format === "float" ? nf(val, 1, 1) : str(round(val));
-    text(valStr, qx, qy + 4);
+    text(valStr, qx, qy + 26);
 
-    // label
-    textSize(8);
-    fill(0);
-    text(quads[i].label, qx, qy + 18);
-    fill(0);
+    // small label
+    textSize(7);
+    text(quads[i].label, qx, qy + 42);
   }
 
   // ── HEART + BPM ───────────────────────────────────────────
@@ -225,59 +217,84 @@ function draw() {
   text('SPACE / TAP to pulse', width / 2, height - 16);
 }
 
-// ── Q1: BARREL WITH WATER ───────────────────────────────────────
+// ── Q1: 3D BARREL WITH WATER ────────────────────────────────────
 
 function drawBarrel(bx, by, t) {
-  var bw = 30;
-  var bh = 28;
-  var iconY = by - 22;
+  var bw = 40;
+  var bh = 36;
+  var rimH = 8; // ellipse rim height for 3D effect
 
-  // barrel outline
+  // barrel body (two vertical lines)
   noFill();
   stroke(0);
   strokeWeight(1);
-  // body
-  rect(round(bx - bw / 2), round(iconY - bh / 2), bw, bh);
-  // hoops
-  line(bx - bw / 2, round(iconY - bh * 0.15), bx + bw / 2, round(iconY - bh * 0.15));
-  line(bx - bw / 2, round(iconY + bh * 0.15), bx + bw / 2, round(iconY + bh * 0.15));
+  line(round(bx - bw / 2), round(by - bh / 2 + rimH / 2),
+       round(bx - bw / 2), round(by + bh / 2 - rimH / 2));
+  line(round(bx + bw / 2), round(by - bh / 2 + rimH / 2),
+       round(bx + bw / 2), round(by + bh / 2 - rimH / 2));
 
-  // water fill (from bottom up)
-  var fillH = bh * waterLevel;
-  var waterTop = iconY + bh / 2 - fillH;
+  // top rim (ellipse)
+  noFill();
+  stroke(0);
+  ellipse(bx, round(by - bh / 2 + rimH / 2), bw, rimH);
 
-  // water surface wave
+  // bottom rim (front half only — back is hidden)
+  arc(bx, round(by + bh / 2 - rimH / 2), bw, rimH, 0, PI);
+
+  // middle hoop
+  noFill();
+  stroke(0);
+  arc(bx, by, bw + 2, rimH, 0, PI);
+
+  // water fill clipped to barrel body
   drawingContext.save();
   drawingContext.beginPath();
-  drawingContext.rect(bx - bw / 2, iconY - bh / 2, bw, bh);
+  // clip rectangle between barrel sides
+  drawingContext.rect(bx - bw / 2, by - bh / 2 + rimH / 2, bw, bh - rimH);
   drawingContext.clip();
+
+  var fillH = (bh - rimH) * waterLevel;
+  var waterTop = by + bh / 2 - rimH / 2 - fillH;
 
   fill(0);
   noStroke();
   beginShape();
   for (var x = -bw / 2; x <= bw / 2; x += 2) {
-    var wy = waterTop + sin(x * 0.3 + t * 2) * 1.5;
+    var wy = waterTop + sin(x * 0.25 + t * 2.5) * 2;
     vertex(round(bx + x), round(wy));
   }
-  vertex(round(bx + bw / 2), round(iconY + bh / 2));
-  vertex(round(bx - bw / 2), round(iconY + bh / 2));
+  vertex(round(bx + bw / 2), round(by + bh / 2));
+  vertex(round(bx - bw / 2), round(by + bh / 2));
   endShape(CLOSE);
 
   drawingContext.restore();
 
-  // redraw barrel outline on top
-  noFill();
+  // redraw sides on top of water
   stroke(0);
   strokeWeight(1);
-  rect(round(bx - bw / 2), round(iconY - bh / 2), bw, bh);
+  noFill();
+  line(round(bx - bw / 2), round(by - bh / 2 + rimH / 2),
+       round(bx - bw / 2), round(by + bh / 2 - rimH / 2));
+  line(round(bx + bw / 2), round(by - bh / 2 + rimH / 2),
+       round(bx + bw / 2), round(by + bh / 2 - rimH / 2));
+  // water surface ellipse hint
+  noFill();
+  stroke(0);
+  var waterSurfY = waterTop;
+  if (waterLevel > 0.05) {
+    arc(bx, round(waterSurfY), bw, rimH * 0.6, 0, PI);
+  }
 }
 
-// ── Q2: METABALL ↔ DIAMOND ─────────────────────────────────────
+// ── Q2: SQUISHY METABALL ↔ DIAMOND ─────────────────────────────
 
 function drawMetaball(mx, my, t) {
-  var iconY = my - 22;
-  var r = 14;
-  var steps = 36;
+  var r = 22;
+  var steps = 48;
+
+  // squish: continuous wobble even at rest
+  var sx = 1 + sin(squishT) * 0.08;
+  var sy = 1 + sin(squishT + PI) * 0.08;
 
   noFill();
   stroke(0);
@@ -287,27 +304,28 @@ function drawMetaball(mx, my, t) {
   for (var i = 0; i <= steps; i++) {
     var a = TWO_PI * i / steps;
 
-    // blob shape (perlin noise offset)
-    var blobR = r + (noise(blobNoiseTime + cos(a) * 2, sin(a) * 2) - 0.5) * 8;
+    // blob shape (perlin noise offset — continuously changing)
+    var blobR = r + (noise(blobNoiseTime + cos(a) * 2, sin(a) * 2) - 0.5) * 12;
 
     // diamond shape
-    var diamondR = r / (abs(cos(a)) + abs(sin(a)));
+    var diamondR = r * 0.85 / (abs(cos(a)) + abs(sin(a)));
 
     // morph between them
     var finalR = lerp(blobR, diamondR, morphT);
-    var px = mx + cos(a) * finalR;
-    var py = iconY + sin(a) * finalR;
+
+    // apply squish
+    var px = mx + cos(a) * finalR * sx;
+    var py = my + sin(a) * finalR * sy;
     vertex(round(px), round(py));
   }
   endShape(CLOSE);
 }
 
-// ── Q3: WORM (sine chain of circles) ────────────────────────────
+// ── Q3: WORM (tight sine chain of circles) ──────────────────────
 
 function drawWorm(wx, wy, t) {
-  var iconY = wy - 22;
-  var segR = 3;
-  var spacing = 5;
+  var segR = 4;
+  var spacing = segR * 1.4; // really close together — overlapping
 
   noFill();
   stroke(0);
@@ -315,9 +333,9 @@ function drawWorm(wx, wy, t) {
 
   for (var i = 0; i < WORM_SEGMENTS; i++) {
     var xOff = (i - WORM_SEGMENTS / 2) * spacing;
-    var yOff = sin(wormPhase + i * 0.8) * wormAmp;
+    var yOff = sin(wormPhase + i * 0.7) * wormAmp;
     var sx = round(wx + xOff);
-    var sy = round(iconY + yOff);
+    var sy = round(wy + yOff);
     ellipse(sx, sy, segR * 2, segR * 2);
   }
 }
@@ -325,34 +343,30 @@ function drawWorm(wx, wy, t) {
 // ── Q4: DOTS (free wander ↔ concentrated assembly) ──────────────
 
 function drawDots(dx, dy, t) {
-  var iconY = dy - 22;
-
   // update dot positions
   for (var i = 0; i < dots.length; i++) {
     var d = dots[i];
 
     if (dotsMode === 0) {
-      // free wander — perlin drift
-      d.vx += (noise(d.noiseSeed + t * 0.3) - 0.5) * 0.15;
-      d.vy += (noise(d.noiseSeed + 100 + t * 0.3) - 0.5) * 0.15;
+      // free wander — faster perlin drift, expansive
+      d.vx += (noise(d.noiseSeed + t * 0.8) - 0.5) * 0.4;
+      d.vy += (noise(d.noiseSeed + 100 + t * 0.8) - 0.5) * 0.4;
     } else {
-      // assemble toward center
-      var tx = 0;
-      var ty = 0;
-      d.vx += (tx - d.x) * 0.02;
-      d.vy += (ty - d.y) * 0.02;
-      // add erratic jitter when assembled
-      d.vx += (noise(d.noiseSeed + t * 2) - 0.5) * 0.4;
-      d.vy += (noise(d.noiseSeed + 200 + t * 2) - 0.5) * 0.4;
+      // assemble toward center — stronger pull, tighter group
+      d.vx += (0 - d.x) * 0.06;
+      d.vy += (0 - d.y) * 0.06;
+      // erratic jitter
+      d.vx += (noise(d.noiseSeed + t * 3) - 0.5) * 0.8;
+      d.vy += (noise(d.noiseSeed + 200 + t * 3) - 0.5) * 0.8;
     }
 
-    d.vx *= 0.92;
-    d.vy *= 0.92;
+    d.vx *= 0.88;
+    d.vy *= 0.88;
     d.x += d.vx;
     d.y += d.vy;
 
     // contain within quadrant area
-    var maxR = 28;
+    var maxR = 40;
     var dd = sqrt(d.x * d.x + d.y * d.y);
     if (dd > maxR) {
       d.x *= maxR / dd;
@@ -362,13 +376,12 @@ function drawDots(dx, dy, t) {
     }
   }
 
-  // draw
+  // draw as filled circles
   fill(0);
   noStroke();
   for (var i = 0; i < dots.length; i++) {
     var d = dots[i];
-    var s = 2;
-    rect(round(dx + d.x) - 1, round(iconY + d.y) - 1, s, s);
+    ellipse(round(dx + d.x), round(dy + d.y), 4, 4);
   }
 }
 
@@ -402,13 +415,14 @@ function registerPulse() {
   waterTarget = random(0.15, 0.9);
   quads[0].targetValue = round(waterTarget * 150);
 
-  // Q2: new morph target + reverse direction
+  // Q2: reverse morph direction + trigger squish
   morphDir *= -1;
+  squishT += 2; // kick the squish
   quads[1].targetValue = random(0.1, 2.4);
 
   // Q3: new worm speed/amplitude
   var newSpeed = random(0.02, 0.12);
-  var newAmp = map(newSpeed, 0.02, 0.12, 4, 18);
+  var newAmp = map(newSpeed, 0.02, 0.12, 4, 22);
   wormSpeed = newSpeed;
   wormAmp = newAmp;
   quads[2].targetValue = round(map(newSpeed, 0.02, 0.12, 30, 140));
