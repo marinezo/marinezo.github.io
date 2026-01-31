@@ -161,48 +161,45 @@ function draw() {
   drawingContext.clip();
 
   // ── WAVE BALL ──────────────────────────────────────────
-  drawWaveBall(now);
+  var ballY = drawWaveBall(now);
 
   // ── MESSAGE TEXT (plain, below ball) ───────────────────
-  fill(0);
+  var textBaseY = ballY + WAVE_CIRCLE_R + 20;
+  var textSlide = 30; // how far text slides in/out
+
   noStroke();
   textFont('monospace');
-  textSize(11);
+  textSize(14);
   textAlign(CENTER, TOP);
 
-  var textY = cy - 20 + WAVE_CIRCLE_R + 16;
-
+  // outgoing message: slides up + fades out
   if (outgoingMsg) {
-    animateY(outgoingMsg, now);
     var elapsed = now - outgoingMsg.startTime;
-    if (elapsed > TRANSITION_MS + 1000) {
+    if (elapsed > TRANSITION_MS) {
       outgoingMsg = null;
     } else {
-      var distFromCenter = abs(outgoingMsg.y - cy);
-      var alpha = max(0, 1 - distFromCenter / WATCH_R);
-      if (alpha > 0.01) {
-        drawingContext.globalAlpha = alpha;
-        text(outgoingMsg.text, cx, outgoingMsg.y - 20 + WAVE_CIRCLE_R + 16);
+      var t_out = easeInOut(elapsed / TRANSITION_MS);
+      var outY = textBaseY - t_out * textSlide;
+      var outAlpha = 1 - t_out;
+      if (outAlpha > 0.01) {
+        drawingContext.globalAlpha = outAlpha;
+        fill(0);
+        drawMsgText(outgoingMsg.text, cx, outY);
         drawingContext.globalAlpha = 1;
       }
     }
   }
 
+  // current message: slides up from below + fades in
   if (currentMsg) {
-    animateY(currentMsg, now);
-    var msgTxt = currentMsg.text;
-    if (msgTxt === "...") {
-      // pixel dots
-      var dotS = 4;
-      var spacing = 12;
-      fill(0);
-      noStroke();
-      for (var d = -1; d <= 1; d++) {
-        rect(cx + d * spacing - dotS / 2, textY - dotS / 2, dotS, dotS);
-      }
-    } else {
-      text(msgTxt, cx, textY);
-    }
+    var elapsed = now - currentMsg.startTime;
+    var t_in = easeInOut(min(1, elapsed / TRANSITION_MS));
+    var inY = textBaseY + textSlide * (1 - t_in);
+    var inAlpha = t_in;
+    drawingContext.globalAlpha = inAlpha;
+    fill(0);
+    drawMsgText(currentMsg.text, cx, inY);
+    drawingContext.globalAlpha = 1;
   }
 
   // ── HEART + BPM ───────────────────────────────────────────
@@ -240,7 +237,7 @@ function draw() {
   text('SPACE / TAP to pulse', width / 2, height - 16);
 }
 
-// ── WAVE BALL (glass sphere) ────────────────────────────────────
+// ── WAVE BALL ───────────────────────────────────────────────────
 
 var WAVE_CIRCLE_R = 70; // radius of the wave ball
 
@@ -250,20 +247,14 @@ function drawWaveBall(now) {
   // morph toward current type
   waveMorph = min(1, waveMorph + 0.015);
 
-  // position: centered, slightly above middle
+  // position: centered, breathing float
   var wcx = cx;
-  var wcy = cy - 20;
-
-  // rotation angle during transition (0 at rest, peaks at PI mid-morph)
-  var rotAng = 0;
-  if (waveMorph < 1) {
-    // sin curve: 0 → PI → 0 as waveMorph goes 0 → 1
-    rotAng = sin(waveMorph * PI) * PI;
-  }
+  var breathe = sin(t * 0.8) * 6;
+  var wcy = cy - 20 + breathe;
 
   // ── black filled sphere ──────────────────────────────────
   fill(0);
-  stroke(255);
+  stroke(0);
   strokeWeight(1);
   ellipse(wcx, wcy, WAVE_CIRCLE_R * 2, WAVE_CIRCLE_R * 2);
 
@@ -274,10 +265,6 @@ function drawWaveBall(now) {
   drawingContext.clip();
 
   // ── wave line (white on black) ───────────────────────────
-  push();
-  translate(wcx, wcy);
-  rotate(rotAng);
-
   noFill();
   stroke(255);
   strokeWeight(1);
@@ -287,29 +274,14 @@ function drawWaveBall(now) {
     var yPrev = getWaveY(prevMsgType, x, 0, t, 0);
     var yCurr = getWaveY(currentMsgType, x, 0, t, 0);
     var wy = yPrev + (yCurr - yPrev) * waveMorph;
-    vertex(x, wy);
+    vertex(wcx + x, wcy + wy);
   }
   endShape();
 
-  pop();
-
-  // ── glass highlights (white arcs on black) ───────────────
-  noFill();
-  stroke(255);
-
-  // top-left glint
-  strokeWeight(2);
-  arc(wcx - WAVE_CIRCLE_R * 0.3, wcy - WAVE_CIRCLE_R * 0.3,
-      WAVE_CIRCLE_R * 0.6, WAVE_CIRCLE_R * 0.6,
-      PI + 0.3, PI + 1.2);
-
-  // bottom-right reflection
-  strokeWeight(1);
-  arc(wcx + WAVE_CIRCLE_R * 0.15, wcy + WAVE_CIRCLE_R * 0.35,
-      WAVE_CIRCLE_R * 0.5, WAVE_CIRCLE_R * 0.5,
-      -0.3, 0.5);
-
   drawingContext.restore();
+
+  // return current y for text positioning
+  return wcy;
 }
 
 // returns the wave y-offset for a given type at position x
@@ -332,7 +304,22 @@ function getWaveY(msgType, x, w, t, baseY) {
   }
 }
 
-// ── BOWED PILL SPEECH BUBBLE ────────────────────────────────────
+// ── MESSAGE TEXT HELPER ─────────────────────────────────────────
+
+function drawMsgText(txt, tx, ty) {
+  if (txt === "...") {
+    var dotS = 4;
+    var spacing = 14;
+    noStroke();
+    for (var d = -1; d <= 1; d++) {
+      rect(tx + d * spacing - dotS / 2, ty, dotS, dotS);
+    }
+  } else {
+    text(txt, tx, ty);
+  }
+}
+
+// ── BOWED PILL SPEECH BUBBLE (unused, kept for reference) ───────
 
 var bowWobbleT = 0;
 
