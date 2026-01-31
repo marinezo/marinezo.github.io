@@ -19,12 +19,16 @@ var bpmHistory = [];
 var lastPulseMs = 0;
 
 // Camera
+var manualPulse = false;
+
+// Camera
 var devices = [];
 var currentDeviceIndex = 0;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
   pixelDensity(1);
+  noSmooth();
 
   cx = width / 2;
   cy = height / 2;
@@ -44,7 +48,8 @@ function draw() {
   // ── SIGNAL ────────────────────────────────────────────────
   var rawSignal = getPulseStrength();
   var boostedSignal = rawSignal * 4;
-  var isPulse = (boostedSignal > beatThreshold && now - lastBeatTime > 300);
+  var isPulse = manualPulse || (boostedSignal > beatThreshold && now - lastBeatTime > 300);
+  manualPulse = false;
   if (isPulse) {
     lastBeatTime = now;
     indicatorFill = 1;
@@ -204,6 +209,7 @@ function registerPulse() {
   lastPulseMs = now;
   lastBeatTime = now;
   indicatorFill = 1;
+  manualPulse = true;
 }
 
 function keyPressed() {
