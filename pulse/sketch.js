@@ -183,7 +183,7 @@ function registerPulse() {
       if (bpmHistory.length > 6) bpmHistory.shift();
       var sum = 0;
       for (var i = 0; i < bpmHistory.length; i++) sum += bpmHistory[i];
-      bpm = round(sum / bpmHistory.length);
+      bpm = constrain(round(sum / bpmHistory.length), 55, 130);
     }
   }
   lastPulseMs = now;
