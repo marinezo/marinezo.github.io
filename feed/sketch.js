@@ -291,35 +291,93 @@ function getWaveY(msgType, x, w, t, baseY) {
   }
 }
 
-// ── PERLIN BLOB SPEECH BUBBLE ───────────────────────────────────
+// ── METABALL SPEECH BUBBLE ──────────────────────────────────────
 
-var blobSeed = 0; // slow-moving seed for noise
+var metaAngle = 0; // satellite orbit angle
 
-function drawBlobShape(cx, cy, rx, ry, detail, noiseScale, noiseAmp, seed) {
-  beginShape();
-  for (var i = 0; i < detail; i++) {
-    var a = map(i, 0, detail, 0, TWO_PI);
-    var n = noise(cos(a) * noiseScale + seed, sin(a) * noiseScale + seed);
-    var rx2 = rx + n * noiseAmp - noiseAmp * 0.5;
-    var ry2 = ry + n * noiseAmp - noiseAmp * 0.5;
-    var x = cx + cos(a) * rx2;
-    var y = cy + sin(a) * ry2;
-    curveVertex(x, y);
+function metaballField(px, py, blobs) {
+  var sum = 0;
+  for (var i = 0; i < blobs.length; i++) {
+    var b = blobs[i];
+    var dx = (px - b.x) / b.rx;
+    var dy = (py - b.y) / b.ry;
+    var d2 = dx * dx + dy * dy;
+    sum += 1 / (d2 + 0.0001);
   }
-  // close smoothly — repeat first 3 points
+  return sum;
+}
+
+function drawMetaballContour(blobs, threshold, res, shadow) {
+  // marching squares on a grid to find the metaball contour
+  var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (var i = 0; i < blobs.length; i++) {
+    minX = min(minX, blobs[i].x - blobs[i].rx * 2);
+    maxX = max(maxX, blobs[i].x + blobs[i].rx * 2);
+    minY = min(minY, blobs[i].y - blobs[i].ry * 2);
+    maxY = max(maxY, blobs[i].y + blobs[i].ry * 2);
+  }
+
+  // sample field values on grid
+  var cols = ceil((maxX - minX) / res);
+  var rows = ceil((maxY - minY) / res);
+  var field = [];
+  for (var r = 0; r <= rows; r++) {
+    field[r] = [];
+    for (var c = 0; c <= cols; c++) {
+      var px = minX + c * res;
+      var py = minY + r * res;
+      field[r][c] = metaballField(px, py, blobs);
+    }
+  }
+
+  // collect contour points using angle from centroid
+  var cx = 0, cy = 0;
+  for (var i = 0; i < blobs.length; i++) { cx += blobs[i].x; cy += blobs[i].y; }
+  cx /= blobs.length; cy /= blobs.length;
+
+  var pts = [];
+  for (var r = 0; r < rows; r++) {
+    for (var c = 0; c < cols; c++) {
+      // check each edge of the cell for threshold crossing
+      var corners = [
+        { r: r, c: c }, { r: r, c: c+1 },
+        { r: r+1, c: c+1 }, { r: r+1, c: c }
+      ];
+      for (var e = 0; e < 4; e++) {
+        var c1 = corners[e];
+        var c2 = corners[(e+1) % 4];
+        var v1 = field[c1.r][c1.c];
+        var v2 = field[c2.r][c2.c];
+        if ((v1 >= threshold) !== (v2 >= threshold)) {
+          var t = (threshold - v1) / (v2 - v1);
+          var px = minX + (c1.c + (c2.c - c1.c) * t) * res;
+          var py = minY + (c1.r + (c2.r - c1.r) * t) * res;
+          var ang = atan2(py - cy, px - cx);
+          pts.push({ x: px, y: py + (shadow || 0), a: ang });
+        }
+      }
+    }
+  }
+
+  // sort by angle and draw
+  pts.sort(function(a, b) { return a.a - b.a; });
+
+  if (pts.length < 3) return;
+
+  beginShape();
+  for (var i = 0; i < pts.length; i++) {
+    curveVertex(pts[i].x, pts[i].y);
+  }
+  // close loop
   for (var j = 0; j < 3; j++) {
-    var a2 = map(j, 0, detail, 0, TWO_PI);
-    var n2 = noise(cos(a2) * noiseScale + seed, sin(a2) * noiseScale + seed);
-    var rxx = rx + n2 * noiseAmp - noiseAmp * 0.5;
-    var ryy = ry + n2 * noiseAmp - noiseAmp * 0.5;
-    curveVertex(cx + cos(a2) * rxx, cy + sin(a2) * ryy);
+    curveVertex(pts[j].x, pts[j].y);
   }
   endShape(CLOSE);
 }
 
 function drawBubble(cx, cy, txt) {
-  var baseRX = containerRadius * 0.65;
-  var baseRY = CARD_H * 0.5;
+  var baseRX = containerRadius * 0.55;
+  var baseRY = CARD_H * 0.45;
 
   // narrow slightly when near circle edge
   var dy = min(abs(cy - center.y), containerRadius - 1);
@@ -329,21 +387,33 @@ function drawBubble(cx, cy, txt) {
   var rx = max(40, baseRX * narrowFactor);
   var ry = baseRY;
 
-  blobSeed += 0.003;
-  var detail = 80;
-  var noiseScale = 1.5;
-  var noiseAmp = 18;
+  metaAngle += 0.008;
 
-  // shadow blob
+  // satellite blob orbiting the main blob
+  var satDist = rx * 0.7;
+  var satX = cx + cos(metaAngle) * satDist;
+  var satY = cy + sin(metaAngle * 0.7) * ry * 0.5;
+  var satRX = rx * 0.35;
+  var satRY = ry * 0.5;
+
+  var blobs = [
+    { x: cx, y: cy, rx: rx, ry: ry },
+    { x: satX, y: satY, rx: satRX, ry: satRY }
+  ];
+
+  var threshold = 1.8;
+  var res = 3;
+
+  // shadow
   fill(0);
   noStroke();
-  drawBlobShape(cx, cy + 6, rx, ry, detail, noiseScale, noiseAmp, blobSeed);
+  drawMetaballContour(blobs, threshold, res, 6);
 
-  // main blob
+  // main shape
   fill(255);
   stroke(0);
   strokeWeight(1);
-  drawBlobShape(cx, cy, rx, ry, detail, noiseScale, noiseAmp, blobSeed);
+  drawMetaballContour(blobs, threshold, res, 0);
 
   // ── text ──────────────────────────────────────────────────
   fill(0);
@@ -353,7 +423,6 @@ function drawBubble(cx, cy, txt) {
   textStyle();
 
   if (txt === "...") {
-    // pixel dots
     var dotS = 5;
     var spacing = 16;
     for (var d = -1; d <= 1; d++) {
