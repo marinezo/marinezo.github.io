@@ -37,12 +37,20 @@ function setup() {
     var r = random(6, 20);
     var ang = random(-PI * 0.8, -PI * 0.2); // spread across bottom half
     var dist_from_center = WATCH_R - r - random(0, WATCH_R * 0.8);
+    // generate irregular shape offsets (once per pebble)
+    var numVerts = floor(random(7, 12));
+    var offsets = [];
+    for (var v = 0; v < numVerts; v++) {
+      offsets.push(random(0.75, 1.15));
+    }
     pebbles.push({
       x: cx + cos(ang) * dist_from_center,
       y: cy - sin(ang) * dist_from_center,
       vx: 0,
       vy: 0,
-      r: r
+      r: r,
+      verts: numVerts,
+      offsets: offsets
     });
   }
 
@@ -178,7 +186,19 @@ function draw() {
   strokeWeight(1);
   for (var i = 0; i < pebbles.length; i++) {
     var p = pebbles[i];
-    ellipse(round(p.x), round(p.y), round(p.r * 2), round(p.r * 2));
+    beginShape();
+    for (var v = 0; v < p.verts; v++) {
+      var a = TWO_PI * v / p.verts;
+      var rr = p.r * p.offsets[v];
+      curveVertex(round(p.x + cos(a) * rr), round(p.y + sin(a) * rr));
+    }
+    // close smoothly: repeat first 3 verts
+    for (var v = 0; v < 3; v++) {
+      var a = TWO_PI * v / p.verts;
+      var rr = p.r * p.offsets[v];
+      curveVertex(round(p.x + cos(a) * rr), round(p.y + sin(a) * rr));
+    }
+    endShape();
   }
 
   // ── HEART + BPM ───────────────────────────────────────────
