@@ -38,10 +38,10 @@ function setup() {
     var ang = random(-PI * 0.8, -PI * 0.2); // spread across bottom half
     var dist_from_center = WATCH_R - r - random(0, WATCH_R * 0.8);
     // generate irregular shape offsets (once per pebble)
-    var numVerts = floor(random(7, 12));
+    var numVerts = floor(random(10, 16));
     var offsets = [];
     for (var v = 0; v < numVerts; v++) {
-      offsets.push(random(0.75, 1.15));
+      offsets.push(random(0.9, 1.08));
     }
     pebbles.push({
       x: cx + cos(ang) * dist_from_center,
