@@ -60,11 +60,8 @@ function easeInOut(t) {
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  pixelDensity(1);
-  noSmooth();
-
-  cx = width / 2;
-  cy = height / 2;
+  cx = round(width / 2);
+  cy = round(height / 2);
 
   currentMsg = makeMsg("SYSTEM READY");
   currentMsg.startTime = -TRANSITION_MS; // already settled

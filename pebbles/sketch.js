@@ -29,10 +29,8 @@ var currentDeviceIndex = 0;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  pixelDensity(1);
-
-  cx = width / 2;
-  cy = height / 2;
+  cx = round(width / 2);
+  cy = round(height / 2);
 
   // create pebbles — start them packed at bottom
   for (var i = 0; i < NUM_PEBBLES; i++) {
