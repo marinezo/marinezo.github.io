@@ -291,33 +291,80 @@ function getWaveY(msgType, x, w, t, baseY) {
   }
 }
 
-// ── PILL SPEECH BUBBLE ──────────────────────────────────────────
+// ── BOWED PILL SPEECH BUBBLE ────────────────────────────────────
+
+var bowWobbleT = 0;
+
+function drawBowedPill(cx, cy, w, h, bow, offY) {
+  // Pill = left semicircle + top line + right semicircle + bottom line
+  // Then bow the whole thing: each point shifts up by bow * (1 - (x/halfW)^2)
+  // so center bows most, ends stay put.
+  var halfW = w / 2;
+  var r = h / 2; // semicircle radius
+  var straight = halfW - r; // length of straight top/bottom edges
+
+  var pts = [];
+  var capSteps = 20;
+  var lineSteps = 10;
+
+  // right semicircle (top to bottom, -PI/2 to PI/2)
+  for (var i = 0; i <= capSteps; i++) {
+    var a = -HALF_PI + (i / capSteps) * PI;
+    pts.push({ x: straight + cos(a) * r, y: sin(a) * r });
+  }
+  // bottom edge (right to left)
+  for (var i = 1; i <= lineSteps; i++) {
+    var s = i / lineSteps;
+    pts.push({ x: straight - s * straight * 2, y: r });
+  }
+  // left semicircle (bottom to top, PI/2 to 3PI/2)
+  for (var i = 0; i <= capSteps; i++) {
+    var a = HALF_PI + (i / capSteps) * PI;
+    pts.push({ x: -straight + cos(a) * r, y: sin(a) * r });
+  }
+  // top edge (left to right)
+  for (var i = 1; i < lineSteps; i++) {
+    var s = i / lineSteps;
+    pts.push({ x: -straight + s * straight * 2, y: -r });
+  }
+
+  // apply bow: shift y based on x position
+  for (var i = 0; i < pts.length; i++) {
+    var nx = pts[i].x / halfW; // -1..1
+    pts[i].y -= bow * (1 - nx * nx);
+  }
+
+  beginShape();
+  for (var i = 0; i < pts.length; i++) {
+    vertex(cx + pts[i].x, cy + pts[i].y + (offY || 0));
+  }
+  endShape(CLOSE);
+}
 
 function drawBubble(cx, cy, txt) {
   var baseW = containerRadius * 1.2;
   var h = CARD_H;
 
-  // narrow slightly when near circle edge
   var dy = min(abs(cy - center.y), containerRadius - 1);
   var chord = sqrt(containerRadius * containerRadius - dy * dy) * 2;
   var ratio = chord / (containerRadius * 2);
   var narrowFactor = lerp(1, ratio, 0.25);
   var w = max(80, baseW * narrowFactor);
 
-  var r = h / 2; // fully rounded ends = pill shape
+  // gentle random wobble on the bow amount
+  bowWobbleT += 0.005;
+  var bow = 12 + (noise(bowWobbleT) * 2 - 1) * 5;
 
   // shadow
   fill(0);
   noStroke();
-  rectMode(CENTER);
-  rect(cx, cy + 6, w, h, r);
+  drawBowedPill(cx, cy, w, h, bow, 6);
 
   // main pill
   fill(255);
   stroke(0);
   strokeWeight(1);
-  rect(cx, cy, w, h, r);
-  rectMode(CORNER);
+  drawBowedPill(cx, cy, w, h, bow, 0);
 
   // ── text ──────────────────────────────────────────────────
   fill(0);
