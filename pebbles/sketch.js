@@ -10,7 +10,7 @@ var video;
 var pebbles = [];
 var cx, cy;
 var WATCH_R = 200;
-var NUM_PEBBLES = 55;
+var NUM_PEBBLES = 130;
 
 // Pulse
 var readings = [];
@@ -32,31 +32,26 @@ function setup() {
   cx = round(width / 2);
   cy = round(height / 2);
 
-  // create pebbles — start them packed at bottom
+  // create pebbles — scatter them across the upper half so they rain down
   for (var i = 0; i < NUM_PEBBLES; i++) {
-    var r = random(6, 20);
-    var ang = random(-PI * 0.8, -PI * 0.2); // spread across bottom half
-    var dist_from_center = WATCH_R - r - random(0, WATCH_R * 0.8);
+    var r = random(5, 25);
+    var ang = random(TWO_PI);
+    var dist_from_center = random(0, WATCH_R - r - 2);
     // generate irregular shape offsets (once per pebble)
-    var numVerts = floor(random(10, 16));
+    var numVerts = floor(random(10, 15));
     var offsets = [];
     for (var v = 0; v < numVerts; v++) {
-      offsets.push(random(0.9, 1.08));
+      offsets.push(random(0.95, 1.05));
     }
     pebbles.push({
       x: cx + cos(ang) * dist_from_center,
-      y: cy - sin(ang) * dist_from_center,
-      vx: 0,
-      vy: 0,
+      y: cy + sin(ang) * dist_from_center - WATCH_R * 0.3,
+      vx: random(-0.5, 0.5),
+      vy: random(0, 1),
       r: r,
       verts: numVerts,
       offsets: offsets
     });
-  }
-
-  // let them settle for a few frames
-  for (var s = 0; s < 200; s++) {
-    physicsTick(false);
   }
 
   getVideoDevices();
@@ -365,6 +360,6 @@ function startCamera(id) {
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  cx = width / 2;
-  cy = height / 2;
+  cx = round(width / 2);
+  cy = round(height / 2);
 }
