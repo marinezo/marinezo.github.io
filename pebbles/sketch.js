@@ -1,12 +1,16 @@
 /* PROJECT: Pebbles
    THEME: Sensory Transducer / Somatic Calibrator
    AESTHETIC: White bg, Black 1px contours
+   - Simple circle pebbles with gravity physics
+   - Pulse launches them upward, they settle back down
+   - Completely still when no input
 */
 
 var video;
-var bubbles = [];
+var pebbles = [];
 var cx, cy;
 var WATCH_R = 200;
+var NUM_PEBBLES = 55;
 
 // Pulse
 var readings = [];
@@ -17,7 +21,6 @@ var indicatorFill = 0;
 var bpm = 0;
 var bpmHistory = [];
 var lastPulseMs = 0;
-
 var manualPulse = false;
 
 // Camera
@@ -27,16 +30,116 @@ var currentDeviceIndex = 0;
 function setup() {
   createCanvas(windowWidth, windowHeight);
   pixelDensity(1);
-  noSmooth();
 
   cx = width / 2;
   cy = height / 2;
 
-  for (var i = 0; i < 65; i++) {
-    bubbles.push(new BlobBubble());
+  // create pebbles — start them packed at bottom
+  for (var i = 0; i < NUM_PEBBLES; i++) {
+    var r = random(6, 20);
+    var ang = random(-PI * 0.8, -PI * 0.2); // spread across bottom half
+    var dist_from_center = WATCH_R - r - random(0, WATCH_R * 0.8);
+    pebbles.push({
+      x: cx + cos(ang) * dist_from_center,
+      y: cy - sin(ang) * dist_from_center,
+      vx: 0,
+      vy: 0,
+      r: r
+    });
+  }
+
+  // let them settle for a few frames
+  for (var s = 0; s < 200; s++) {
+    physicsTick(false);
   }
 
   getVideoDevices();
+}
+
+function physicsTick(isPulse) {
+  var GRAVITY = 0.15;
+  var DAMPING = 0.85;
+  var STOP_THRESHOLD = 0.1;
+
+  // apply pulse force
+  if (isPulse) {
+    for (var i = 0; i < pebbles.length; i++) {
+      var p = pebbles[i];
+      p.vx += random(-3, 3);
+      p.vy += random(-12, -6);
+    }
+  }
+
+  // update positions
+  for (var i = 0; i < pebbles.length; i++) {
+    var p = pebbles[i];
+
+    p.vy += GRAVITY;
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vx *= DAMPING;
+    p.vy *= DAMPING;
+
+    // stop when very slow (prevents trembling)
+    if (abs(p.vx) < STOP_THRESHOLD && abs(p.vy) < STOP_THRESHOLD) {
+      p.vx = 0;
+      p.vy = 0;
+    }
+  }
+
+  // pebble-to-pebble collisions
+  for (var i = 0; i < pebbles.length; i++) {
+    for (var j = i + 1; j < pebbles.length; j++) {
+      var a = pebbles[i];
+      var b = pebbles[j];
+      var dx = b.x - a.x;
+      var dy = b.y - a.y;
+      var d = sqrt(dx * dx + dy * dy);
+      var minD = a.r + b.r;
+      if (d < minD && d > 0.01) {
+        var nx = dx / d;
+        var ny = dy / d;
+        var overlap = (minD - d) * 0.5;
+        a.x -= nx * overlap;
+        a.y -= ny * overlap;
+        b.x += nx * overlap;
+        b.y += ny * overlap;
+
+        // exchange velocity along collision normal
+        var relVx = a.vx - b.vx;
+        var relVy = a.vy - b.vy;
+        var dot = relVx * nx + relVy * ny;
+        if (dot > 0) {
+          a.vx -= nx * dot * 0.5;
+          a.vy -= ny * dot * 0.5;
+          b.vx += nx * dot * 0.5;
+          b.vy += ny * dot * 0.5;
+        }
+      }
+    }
+  }
+
+  // boundary: keep inside circle
+  for (var i = 0; i < pebbles.length; i++) {
+    var p = pebbles[i];
+    var dx = p.x - cx;
+    var dy = p.y - cy;
+    var d = sqrt(dx * dx + dy * dy);
+    var maxD = WATCH_R - p.r - 1;
+    if (d > maxD && d > 0.01) {
+      var nx = dx / d;
+      var ny = dy / d;
+      p.x = cx + nx * maxD;
+      p.y = cy + ny * maxD;
+
+      // reflect velocity
+      var dot = p.vx * nx + p.vy * ny;
+      if (dot > 0) {
+        p.vx -= 2 * dot * nx * 0.4;
+        p.vy -= 2 * dot * ny * 0.4;
+      }
+    }
+  }
 }
 
 function draw() {
@@ -56,6 +159,9 @@ function draw() {
 
   indicatorFill = max(0, indicatorFill - 0.03);
 
+  // ── PHYSICS ───────────────────────────────────────────────
+  physicsTick(isPulse);
+
   // ── WATCH CIRCLE ──────────────────────────────────────────
   noFill();
   stroke(0);
@@ -68,21 +174,13 @@ function draw() {
   drawingContext.arc(cx, cy, WATCH_R - 1, 0, TWO_PI);
   drawingContext.clip();
 
-  // ── BUBBLE PHYSICS ────────────────────────────────────────
-  var pulseForce = createVector(0, 0);
-  if (isPulse) {
-    pulseForce = createVector(random(-4, 4), random(-10, -18));
-  }
-  var gravity = createVector(0, 0.25);
-
-  for (var i = 0; i < bubbles.length; i++) {
-    var b = bubbles[i];
-    b.applyForce(gravity);
-    b.applyForce(pulseForce);
-    b.update();
-    b.collideWithOthers(bubbles);
-    b.checkBoundary();
-    b.display();
+  // ── DRAW PEBBLES ──────────────────────────────────────────
+  fill(255);
+  stroke(0);
+  strokeWeight(1);
+  for (var i = 0; i < pebbles.length; i++) {
+    var p = pebbles[i];
+    ellipse(round(p.x), round(p.y), round(p.r * 2), round(p.r * 2));
   }
 
   // ── HEART + BPM ───────────────────────────────────────────
@@ -119,95 +217,6 @@ function draw() {
   textAlign(CENTER, BOTTOM);
   text('SPACE / TAP to pulse', width / 2, height - 16);
 }
-
-// ── BUBBLE CLASS ────────────────────────────────────────────────
-
-function BlobBubble() {
-  var ang = random(PI / 4, 3 * PI / 4);
-  var r = random(WATCH_R * 0.5, WATCH_R * 0.8);
-  this.pos = createVector(cx + cos(ang) * r, cy + sin(ang) * r);
-  this.vel = createVector(0, 0);
-  this.acc = createVector(0, 0);
-  this.radius = random(5, 24);
-  this.drag = 0.90;
-  this.noiseOffset = random(1000);
-  this.noiseStep = random(0.005, 0.02);
-}
-
-BlobBubble.prototype.applyForce = function(f) {
-  this.acc.add(f);
-};
-
-BlobBubble.prototype.update = function() {
-  this.vel.add(this.acc);
-  this.vel.mult(this.drag);
-  this.pos.add(this.vel);
-  this.acc.mult(0);
-  this.noiseOffset += this.noiseStep;
-};
-
-BlobBubble.prototype.collideWithOthers = function(others) {
-  for (var i = 0; i < others.length; i++) {
-    var other = others[i];
-    if (other !== this) {
-      var d = dist(this.pos.x, this.pos.y, other.pos.x, other.pos.y);
-      var minDist = this.radius + other.radius;
-      if (d < minDist) {
-        var push = p5.Vector.sub(this.pos, other.pos).normalize();
-        var force = (minDist - d) * 0.25;
-        this.acc.add(push.mult(force));
-        this.vel.mult(0.95);
-      }
-    }
-  }
-};
-
-BlobBubble.prototype.checkBoundary = function() {
-  var d = dist(this.pos.x, this.pos.y, cx, cy);
-  var maxDist = WATCH_R - this.radius;
-  if (d > maxDist) {
-    var normal = p5.Vector.sub(createVector(cx, cy), this.pos).normalize();
-    var overlap = d - maxDist;
-    this.pos.add(p5.Vector.mult(normal, overlap));
-    var bounce = this.vel.copy().reflect(normal);
-    this.vel = bounce.mult(0.3);
-  }
-};
-
-BlobBubble.prototype.display = function() {
-  // Draw using raw canvas for crisp 1px strokes (no anti-alias)
-  var ctx = drawingContext;
-  ctx.imageSmoothingEnabled = false;
-
-  // build points
-  var pts = [];
-  var steps = floor(map(this.radius, 5, 24, 8, 16));
-  for (var i = 0; i < steps; i++) {
-    var angle = (i / steps) * TWO_PI;
-    var wobbleRange = map(this.radius, 5, 24, 1, 4);
-    var rOff = map(noise(cos(angle) + 1, sin(angle) + 1, this.noiseOffset), 0, 1, -wobbleRange, wobbleRange);
-    var r = this.radius + rOff;
-    pts.push({
-      x: round(this.pos.x + r * cos(angle)) + 0.5,
-      y: round(this.pos.y + r * sin(angle)) + 0.5
-    });
-  }
-
-  // fill white
-  ctx.beginPath();
-  ctx.moveTo(pts[0].x, pts[0].y);
-  for (var i = 1; i < pts.length; i++) {
-    ctx.lineTo(pts[i].x, pts[i].y);
-  }
-  ctx.closePath();
-  ctx.fillStyle = '#ffffff';
-  ctx.fill();
-
-  // stroke black 1px
-  ctx.strokeStyle = '#000000';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-};
 
 // ── PULSE ───────────────────────────────────────────────────────
 
