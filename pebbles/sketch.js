@@ -184,8 +184,8 @@ BlobBubble.prototype.display = function() {
     var wobbleRange = map(this.radius, 5, 24, 1, 4);
     var rOff = map(noise(cos(angle) + 1, sin(angle) + 1, this.noiseOffset), 0, 1, -wobbleRange, wobbleRange);
     var r = this.radius + rOff;
-    var x = this.pos.x + r * cos(angle);
-    var y = this.pos.y + r * sin(angle);
+    var x = round(this.pos.x + r * cos(angle));
+    var y = round(this.pos.y + r * sin(angle));
     curveVertex(x, y);
   }
   endShape(CLOSE);

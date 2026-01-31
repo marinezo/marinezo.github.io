@@ -336,7 +336,7 @@ function drawBowedPill(cx, cy, w, h, bow, offY) {
 
   beginShape();
   for (var i = 0; i < pts.length; i++) {
-    vertex(cx + pts[i].x, cy + pts[i].y + (offY || 0));
+    vertex(round(cx + pts[i].x), round(cy + pts[i].y + (offY || 0)));
   }
   endShape(CLOSE);
 }
