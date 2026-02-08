@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marine Zorea</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      font-family: 'Times New Roman', Times, serif;
+      background: #f4f4f4;
+      color: #000;
+      overflow-x: hidden;
+    }
+
+    a { text-decoration: none; color: inherit; }
+
+    /* --- STICKY NAVIGATION --- */
+
+    .nav-title {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 1rem;
+      z-index: 100;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+
+    .nav-bottom-left {
+      position: fixed;
+      bottom: 24px;
+      left: 24px;
+      font-size: 1rem;
+      z-index: 100;
+      line-height: 1.35;
+    }
+
+    .nav-bottom-right {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      font-size: 1rem;
+      z-index: 100;
+      line-height: 1.35;
+      text-align: right;
+    }
+
+    /* --- MAIN LAYOUT --- */
+
+    .main-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 70px 20px 100px;
+    }
+
+    /* --- 3D IMAGE SPHERE --- */
+
+    .sphere-container {
+      position: relative;
+      width: 60vh;
+      height: 60vh;
+      max-width: 90vw;
+      flex-shrink: 0;
+    }
+
+    .sphere-item {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      will-change: transform, opacity;
+      cursor: pointer;
+    }
+
+    .sphere-item img {
+      display: block;
+      object-fit: cover;
+      transition: transform 0.25s ease;
+      pointer-events: none;
+    }
+
+    .sphere-item:hover img {
+      transform: scale(1.4);
+    }
+
+    /* --- BIO TEXT --- */
+
+    .bio-text {
+      padding-top: 40px;
+      max-width: 560px;
+      text-align: center;
+      font-size: 1.8rem;
+      line-height: 1.4;
+    }
+
+    /* --- RESPONSIVE --- */
+
+    @media (max-width: 600px) {
+      .bio-text {
+        font-size: 1.3rem;
+        padding: 30px 10px 0;
+      }
+      .sphere-container {
+        width: 80vw;
+        height: 80vw;
+        max-height: 55vh;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sticky: title top center -->
+  <a href="#" class="nav-title" onclick="window.scrollTo({top:0,behavior:'smooth'}); return false;">Marine Zorea</a>
+
+  <!-- Sticky: bottom left link -->
+  <a href="#" class="nav-bottom-left">Works and<br>Publications</a>
+
+  <!-- Sticky: bottom right link -->
+  <a href="#" class="nav-bottom-right">About and<br>Contact</a>
+
+  <div class="main-content">
+    <!-- 3D sphere of images -->
+    <div class="sphere-container" id="sphere"></div>
+
+    <!-- Bio description -->
+    <p class="bio-text">
+      Marine Zorea is a designer and researcher exploring the emergent and critical realities of everyday technology through objects, sounds, images, and scholarly writing.
+    </p>
+  </div>
+
+  <script>
+  (function () {
+    var ITEM_COUNT = 20;
+    var PERSPECTIVE = 800;
+    var LERP = 0.05;
+    var AUTO_SPEED = 0.0015;
+
+    var container = document.getElementById('sphere');
+
+    /* 20 images — alternating square (1:1) and wide (5:3) aspect ratios,
+       sizes vary between 18–30 px width */
+    var imageData = [
+      { src: 'https://marinezo.com/img/project_livingsounds/4.JPG',              ratio: 'square', w: 28 },
+      { src: 'https://marinezo.com/img/home/thumb_audible.gif',                  ratio: 'wide',   w: 25 },
+      { src: 'https://marinezo.com/img/project_allisheard/1.png',                ratio: 'square', w: 22 },
+      { src: 'https://marinezo.com/img/project_anatomo/4.gif',                   ratio: 'wide',   w: 30 },
+      { src: 'https://marinezo.com/img/project_chanelspaces/3.jpg',              ratio: 'square', w: 20 },
+      { src: 'https://marinezo.com/img/home/thumb_CHANEL3.png',                  ratio: 'wide',   w: 26 },
+      { src: 'https://marinezo.com/img/project_speakingofcollectivedining/1.gif',ratio: 'square', w: 24 },
+      { src: 'https://marinezo.com/img/project_wavesbeyond/7.jpeg',              ratio: 'wide',   w: 28 },
+      { src: 'https://marinezo.com/img/project_formsofquery/1.png',              ratio: 'square', w: 30 },
+      { src: 'https://marinezo.com/img/project_thoughtfulobject/6.gif',          ratio: 'wide',   w: 22 },
+      { src: 'https://marinezo.com/img/project_wavesbeyond/1.jpg',              ratio: 'square', w: 26 },
+      { src: 'https://marinezo.com/img/project_livingsounds/4.JPG',              ratio: 'wide',   w: 20 },
+      { src: 'https://marinezo.com/img/home/thumb_audible.gif',                  ratio: 'square', w: 24 },
+      { src: 'https://marinezo.com/img/project_allisheard/1.png',                ratio: 'wide',   w: 28 },
+      { src: 'https://marinezo.com/img/project_anatomo/4.gif',                   ratio: 'square', w: 18 },
+      { src: 'https://marinezo.com/img/project_chanelspaces/3.jpg',              ratio: 'wide',   w: 30 },
+      { src: 'https://marinezo.com/img/home/thumb_CHANEL3.png',                  ratio: 'square', w: 22 },
+      { src: 'https://marinezo.com/img/project_speakingofcollectivedining/1.gif',ratio: 'wide',   w: 26 },
+      { src: 'https://marinezo.com/img/project_wavesbeyond/7.jpeg',              ratio: 'square', w: 20 },
+      { src: 'https://marinezo.com/img/project_formsofquery/1.png',              ratio: 'wide',   w: 24 }
+    ];
+
+    /* --- Build DOM elements --- */
+    var items = imageData.map(function (data) {
+      var el = document.createElement('div');
+      el.className = 'sphere-item';
+
+      var img = document.createElement('img');
+      img.src = data.src;
+      img.alt = '';
+      img.draggable = false;
+
+      var w = data.w;
+      var h = data.ratio === 'square' ? w : Math.round(w * 3 / 5);
+
+      img.style.width = w + 'px';
+      img.style.height = h + 'px';
+
+      /* Negative margin centres each image on its 3-D point */
+      el.style.marginLeft = (-w / 2) + 'px';
+      el.style.marginTop  = (-h / 2) + 'px';
+
+      el.appendChild(img);
+      container.appendChild(el);
+
+      return { el: el, w: w, h: h };
+    });
+
+    /* --- Fibonacci sphere distribution --- */
+    var golden = (1 + Math.sqrt(5)) / 2;
+    var points = [];
+
+    for (var i = 0; i < ITEM_COUNT; i++) {
+      var theta = Math.acos(1 - 2 * (i + 0.5) / ITEM_COUNT);
+      var phi   = 2 * Math.PI * i / golden;
+
+      points.push({
+        ox: Math.sin(theta) * Math.cos(phi),
+        oy: Math.cos(theta),
+        oz: Math.sin(theta) * Math.sin(phi)
+      });
+    }
+
+    /* --- Mouse interaction --- */
+    var targetRotX = 0;
+    var targetRotY = 0;
+    var currentRotX = 0;
+    var currentRotY = 0;
+    var autoAngle = 0;
+    var mouseActive = false;
+    var mouseTimer = null;
+
+    document.addEventListener('mousemove', function (e) {
+      var cx = window.innerWidth  / 2;
+      var cy = window.innerHeight / 2;
+      targetRotY = ((e.clientX - cx) / cx) * Math.PI * 0.6;
+      targetRotX = ((e.clientY - cy) / cy) * Math.PI * 0.4;
+      mouseActive = true;
+
+      /* Return to idle rotation after 3 s of no movement */
+      clearTimeout(mouseTimer);
+      mouseTimer = setTimeout(function () { mouseActive = false; }, 3000);
+    });
+
+    /* --- Animation loop --- */
+    function animate() {
+      autoAngle += AUTO_SPEED;
+
+      if (mouseActive) {
+        currentRotX += (targetRotX - currentRotX) * LERP;
+        currentRotY += (targetRotY - currentRotY) * LERP;
+      } else {
+        /* Gently drift back toward auto-rotation */
+        currentRotX += (0 - currentRotX) * 0.01;
+        currentRotY += (autoAngle - currentRotY) * 0.01;
+      }
+
+      var rect   = container.getBoundingClientRect();
+      var radius = Math.min(rect.width, rect.height) / 2;
+
+      /* Combined rotation = user + slow auto-spin */
+      var rotY = currentRotY + autoAngle * 0.3;
+      var rotX = currentRotX;
+
+      var sinA = Math.sin(rotY);
+      var cosA = Math.cos(rotY);
+      var sinB = Math.sin(rotX);
+      var cosB = Math.cos(rotX);
+
+      for (var i = 0; i < ITEM_COUNT; i++) {
+        var p = points[i];
+
+        /* Rotate around Y */
+        var x1 =  cosA * p.ox + sinA * p.oz;
+        var y1 =  p.oy;
+        var z1 = -sinA * p.ox + cosA * p.oz;
+
+        /* Rotate around X */
+        var x2 = x1;
+        var y2 = cosB * y1 - sinB * z1;
+        var z2 = sinB * y1 + cosB * z1;
+
+        /* Perspective projection */
+        var zWorld = z2 * radius;
+        var scale  = PERSPECTIVE / (PERSPECTIVE + zWorld);
+
+        var sx = x2 * radius * scale;
+        var sy = y2 * radius * scale;
+
+        var item = items[i];
+        item.el.style.transform = 'translate(' + sx + 'px,' + sy + 'px) scale(' + scale + ')';
+        item.el.style.zIndex    = Math.round(scale * 1000);
+        item.el.style.opacity   = Math.max(0.15, 0.2 + 0.8 * ((scale - 0.55) / 0.9));
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+  })();
+  </script>
+
+</body>
+</html>
