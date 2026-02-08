@@ -49,15 +49,14 @@
       text-align: right;
     }
 
-    /* --- HERO: full viewport, sphere sits in the lower portion --- */
+    /* --- HERO: full viewport, sphere centred --- */
 
     .hero-section {
       width: 100%;
       height: 100vh;
       display: flex;
-      align-items: flex-end;
+      align-items: center;
       justify-content: center;
-      padding-bottom: 12vh;
     }
 
     /* --- 3D IMAGE SPHERE --- */
@@ -68,11 +67,6 @@
       height: 60vh;
       max-width: 90vw;
       flex-shrink: 0;
-      cursor: grab;
-    }
-
-    .sphere-container:active {
-      cursor: grabbing;
     }
 
     .sphere-item {
@@ -80,21 +74,19 @@
       top: 50%;
       left: 50%;
       will-change: transform, opacity;
-      cursor: pointer;
     }
 
     .sphere-item img {
       display: block;
       object-fit: cover;
       transition: transform 0.25s ease;
-      pointer-events: none;
     }
 
     .sphere-item:hover img {
       transform: scale(1.3);
     }
 
-    /* --- BIO SECTION: below the fold --- */
+    /* --- BIO SECTION: below the fold, fade-in on scroll --- */
 
     .bio-section {
       width: 100%;
@@ -109,6 +101,14 @@
       text-align: center;
       font-size: 1.8rem;
       line-height: 1.4;
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 1s ease, transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .bio-text.visible {
+      opacity: 1;
+      transform: translateY(0);
     }
 
     /* --- RESPONSIVE --- */
@@ -124,9 +124,6 @@
         height: 80vw;
         max-height: 55vh;
       }
-      .hero-section {
-        padding-bottom: 8vh;
-      }
     }
   </style>
 </head>
@@ -136,35 +133,39 @@
   <a href="#" class="nav-title" onclick="window.scrollTo({top:0,behavior:'smooth'}); return false;">Marine Zorea</a>
 
   <!-- Sticky: bottom left link -->
-  <a href="#" class="nav-bottom-left">Works</a>
+  <a href="#" class="nav-bottom-left">Works and<br>Publications</a>
 
   <!-- Sticky: bottom right link -->
-  <a href="#" class="nav-bottom-right">About</a>
+  <a href="#" class="nav-bottom-right">About and<br>Contact</a>
 
-  <!-- First viewport: sphere -->
+  <!-- First viewport: sphere centred -->
   <div class="hero-section">
     <div class="sphere-container" id="sphere"></div>
   </div>
 
-  <!-- Below the fold: bio -->
+  <!-- Below the fold: bio (fades in on scroll) -->
   <div class="bio-section">
-    <p class="bio-text">
+    <p class="bio-text" id="bio">
       Marine Zorea is a designer and researcher exploring the emergent and critical realities of everyday technology through objects, sounds, images, and scholarly writing.
     </p>
   </div>
 
   <script>
   (function () {
-    var ITEM_COUNT = 20;
+    /* =============================================
+       CONFIG
+       ============================================= */
+    var ITEM_COUNT  = 20;
     var PERSPECTIVE = 900;
-    var LERP = 0.08;
-    var AUTO_SPEED = 0.0004;          /* very slow idle spin */
+    var AUTO_SPEED  = 0.0004;   /* horizontal spin — very slow, steady */
+    var DRIFT_AMP   = 0.18;     /* max vertical tilt in radians (~10°) */
+    var DRIFT_FREQ  = 0.35;     /* how often drift changes direction (lower = slower) */
+    var CURVE_STRENGTH = 0.55;  /* how much images tilt to follow the sphere surface (0–1) */
 
-    var container = document.getElementById('sphere');
+    var container   = document.getElementById('sphere');
     var cachedRadius = 0;
 
-    /* 20 images — alternating square (1:1) and wide (5:3),
-       sizes now 45–75 px for better visibility */
+    /* 20 images — alternating square (1:1) and wide (5:3) */
     var imageData = [
       { src: 'https://marinezo.com/img/project_livingsounds/4.JPG',              ratio: 'square', w: 65 },
       { src: 'https://marinezo.com/img/home/thumb_audible.gif',                  ratio: 'wide',   w: 55 },
@@ -188,7 +189,9 @@
       { src: 'https://marinezo.com/img/project_formsofquery/1.png',              ratio: 'wide',   w: 55 }
     ];
 
-    /* --- Build DOM elements --- */
+    /* =============================================
+       BUILD DOM
+       ============================================= */
     var items = imageData.map(function (data) {
       var el = document.createElement('div');
       el.className = 'sphere-item';
@@ -201,7 +204,7 @@
       var w = data.w;
       var h = data.ratio === 'square' ? w : Math.round(w * 3 / 5);
 
-      img.style.width = w + 'px';
+      img.style.width  = w + 'px';
       img.style.height = h + 'px';
 
       el.style.marginLeft = (-w / 2) + 'px';
@@ -213,7 +216,9 @@
       return { el: el, w: w, h: h };
     });
 
-    /* --- Fibonacci sphere distribution --- */
+    /* =============================================
+       FIBONACCI SPHERE POINT DISTRIBUTION
+       ============================================= */
     var golden = (1 + Math.sqrt(5)) / 2;
     var points = [];
 
@@ -228,63 +233,9 @@
       });
     }
 
-    /* --- Drag-based interaction (click + move) --- */
-    var isDragging = false;
-    var dragStartX = 0;
-    var dragStartY = 0;
-    var dragRotX = 0;
-    var dragRotY = 0;
-    var prevDragRotX = 0;
-    var prevDragRotY = 0;
-    var currentRotX = 0;
-    var currentRotY = 0;
-    var autoAngle = 0;
-
-    container.addEventListener('mousedown', function (e) {
-      isDragging = true;
-      dragStartX = e.clientX;
-      dragStartY = e.clientY;
-      prevDragRotX = dragRotX;
-      prevDragRotY = dragRotY;
-      e.preventDefault();
-    });
-
-    document.addEventListener('mousemove', function (e) {
-      if (!isDragging) return;
-      var dx = e.clientX - dragStartX;
-      var dy = e.clientY - dragStartY;
-      dragRotY = prevDragRotY + dx * 0.006;
-      dragRotX = prevDragRotX + dy * 0.006;
-    });
-
-    document.addEventListener('mouseup', function () {
-      isDragging = false;
-    });
-
-    /* Touch support */
-    container.addEventListener('touchstart', function (e) {
-      if (e.touches.length === 1) {
-        isDragging = true;
-        dragStartX = e.touches[0].clientX;
-        dragStartY = e.touches[0].clientY;
-        prevDragRotX = dragRotX;
-        prevDragRotY = dragRotY;
-      }
-    }, { passive: true });
-
-    document.addEventListener('touchmove', function (e) {
-      if (!isDragging || e.touches.length !== 1) return;
-      var dx = e.touches[0].clientX - dragStartX;
-      var dy = e.touches[0].clientY - dragStartY;
-      dragRotY = prevDragRotY + dx * 0.006;
-      dragRotX = prevDragRotX + dy * 0.006;
-    }, { passive: true });
-
-    document.addEventListener('touchend', function () {
-      isDragging = false;
-    });
-
-    /* --- Cache radius, recalculate on resize --- */
+    /* =============================================
+       CACHE RADIUS
+       ============================================= */
     function updateRadius() {
       var rect = container.getBoundingClientRect();
       cachedRadius = Math.min(rect.width, rect.height) / 2;
@@ -292,17 +243,21 @@
     updateRadius();
     window.addEventListener('resize', updateRadius);
 
-    /* --- Animation loop --- */
+    /* =============================================
+       ANIMATION — autonomous, no user input
+       Steady horizontal spin + gentle diagonal drift
+       ============================================= */
+    var angle = 0;
+    var DEG = 180 / Math.PI;
+
     function animate() {
-      /* Steady, very slow auto-rotation */
-      autoAngle += AUTO_SPEED;
+      angle += AUTO_SPEED;
 
-      /* Smooth lerp toward drag target */
-      currentRotX += (dragRotX - currentRotX) * LERP;
-      currentRotY += (dragRotY - currentRotY) * LERP;
-
-      var rotY = currentRotY + autoAngle;
-      var rotX = currentRotX;
+      /* Horizontal rotation is constant.
+         Vertical drift follows a slow sine curve so the sphere
+         gently tips up and down while spinning. */
+      var rotY = angle;
+      var rotX = Math.sin(angle * DRIFT_FREQ) * DRIFT_AMP;
 
       var sinA = Math.sin(rotY);
       var cosA = Math.cos(rotY);
@@ -314,12 +269,12 @@
       for (var i = 0; i < ITEM_COUNT; i++) {
         var p = points[i];
 
-        /* Rotate around Y */
+        /* Rotate around Y (horizontal spin) */
         var x1 =  cosA * p.ox + sinA * p.oz;
         var y1 =  p.oy;
         var z1 = -sinA * p.ox + cosA * p.oz;
 
-        /* Rotate around X */
+        /* Rotate around X (vertical drift) */
         var x2 = x1;
         var y2 = cosB * y1 - sinB * z1;
         var z2 = sinB * y1 + cosB * z1;
@@ -331,16 +286,39 @@
         var sx = x2 * r * scale;
         var sy = y2 * r * scale;
 
+        /* Surface-normal rotation: tilt each image to follow
+           the curvature of the sphere.
+           atan2(x,z) → how far left/right the point is
+           asin(y)    → how far up/down the point is */
+        var faceY = Math.atan2(x2, z2) * DEG * CURVE_STRENGTH;
+        var faceX = -Math.asin(Math.max(-1, Math.min(1, y2))) * DEG * CURVE_STRENGTH;
+
         var item = items[i];
-        item.el.style.transform = 'translate(' + sx + 'px,' + sy + 'px) scale(' + scale + ')';
-        item.el.style.zIndex    = Math.round(scale * 1000);
-        item.el.style.opacity   = Math.max(0.15, 0.2 + 0.8 * ((scale - 0.55) / 0.9));
+        item.el.style.transform =
+          'translate(' + sx + 'px,' + sy + 'px) ' +
+          'scale(' + scale + ') ' +
+          'rotateY(' + faceY + 'deg) ' +
+          'rotateX(' + faceX + 'deg)';
+        item.el.style.zIndex  = Math.round(scale * 1000);
+        item.el.style.opacity = Math.max(0.12, 0.15 + 0.85 * ((scale - 0.55) / 0.9));
       }
 
       requestAnimationFrame(animate);
     }
 
     animate();
+
+    /* =============================================
+       BIO SCROLL-REVEAL
+       ============================================= */
+    var bio = document.getElementById('bio');
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) bio.classList.add('visible');
+      });
+    }, { threshold: 0.15 });
+    observer.observe(bio);
+
   })();
   </script>
 
