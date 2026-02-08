@@ -106,12 +106,12 @@
 
     .works-section {
       width: 100%;
-      padding: 80px 20px 160px;   /* ← top = bio→table gap      */
+      padding: 80px 15px 160px;   /* ← top = bio→table gap      */
     }
 
     .index-container {
-      width: 70%;
-      max-width: 70vw;
+      width: 100%;
+      max-width: 100%;
       margin: 0 auto;
     }
 
@@ -140,6 +140,33 @@
 
     .index-row:hover {
       padding-left: 12px;
+    }
+
+    /* --- GHOST IMAGE (follows cursor on table hover) --- */
+
+    #ghost-wrapper {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 360px;
+      height: 270px;
+      pointer-events: none;
+      z-index: 50;
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.8);
+      transition: opacity 0.2s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      mix-blend-mode: multiply;
+    }
+
+    #ghost-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    #ghost-wrapper.is-active {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
     }
 
     /* --- RESPONSIVE --- */
@@ -188,6 +215,11 @@
     </p>
   </div>
 
+  <!-- Ghost image (follows cursor on table row hover) -->
+  <div id="ghost-wrapper">
+    <img id="ghost-img" src="" alt="">
+  </div>
+
   <!-- Works index table -->
   <section class="works-section" id="works">
     <div class="index-container">
@@ -198,70 +230,70 @@
         <div>Type</div>
       </div>
 
-      <a href="project.html" class="index-row">
+      <a href="project.html" class="index-row" data-img="https://marinezo.com/img/project_formsofquery/1.png">
         <div>2025</div>
         <div>The Age of Query</div>
         <div class="col-description">An exhibition driving the exploration: what is the meaning of technology today?</div>
         <div class="col-type">Education, Exhibition</div>
       </a>
 
-      <a href="project.html" class="index-row">
+      <a href="project.html" class="index-row" data-img="https://marinezo.com/img/project_allisheard/1.png">
         <div>2024</div>
         <div>Re-imagining The Sounds of Home</div>
         <div class="col-description">Can domestic technology voice post-human ethics?</div>
         <div class="col-type">Research, Object</div>
       </a>
 
-      <a href="project.html" class="index-row">
+      <a href="project.html" class="index-row" data-img="https://marinezo.com/img/project_livingsounds/4.JPG">
         <div>2024</div>
         <div>Empathic Directions for Parental Tech</div>
         <div class="col-description">Can baby monitor alerts match the ecologies where they exist?</div>
         <div class="col-type">Research</div>
       </a>
 
-      <a href="project.html" class="index-row">
+      <a href="project.html" class="index-row" data-img="https://marinezo.com/img/project_thoughtfulobject/6.gif">
         <div>2023-</div>
         <div>Thoughtful Object</div>
         <div class="col-description">A workshop deciphering everyday objects on the verge of embodied theory</div>
         <div class="col-type">Education, Research</div>
       </a>
 
-      <a href="project.html" class="index-row">
+      <a href="project.html" class="index-row" data-img="https://marinezo.com/img/project_speakingofcollectivedining/1.gif">
         <div>2023</div>
         <div>Speaking of Collective Dining</div>
         <div class="col-description">How did kitchen objects and spaces produce a collective living?</div>
         <div class="col-type">Research</div>
       </a>
 
-      <a href="project.html" class="index-row">
+      <a href="project.html" class="index-row" data-img="https://marinezo.com/img/home/thumb_audible.gif">
         <div>2021, 2023</div>
         <div>Audible Imagery</div>
         <div class="col-description">A cross-cultural study on everyday listening through participatory image making</div>
         <div class="col-type">Research, Exhibition</div>
       </a>
 
-      <a href="project.html" class="index-row">
+      <a href="project.html" class="index-row" data-img="https://marinezo.com/img/project_chanelspaces/3.jpg">
         <div>2019</div>
         <div>CHANEL Spaces of Transformation</div>
         <div class="col-description">Introducing CHANEL to Gen-Z through an embodied fitting ritual</div>
         <div class="col-type">Space Design, Exhibition</div>
       </a>
 
-      <a href="project.html" class="index-row">
+      <a href="project.html" class="index-row" data-img="https://marinezo.com/img/project_livingsounds/4.JPG">
         <div>2019</div>
         <div>Living Sounds</div>
         <div class="col-description">A series of IoT objects for independent living in elders' home</div>
         <div class="col-type">Object</div>
       </a>
 
-      <a href="project.html" class="index-row">
+      <a href="project.html" class="index-row" data-img="https://marinezo.com/img/project_anatomo/4.gif">
         <div>2018</div>
         <div>ANA tomo</div>
         <div class="col-description">A friendly wayfinding journey at the airport and beyond</div>
         <div class="col-type">Object</div>
       </a>
 
-      <a href="project.html" class="index-row">
+      <a href="project.html" class="index-row" data-img="https://marinezo.com/img/project_wavesbeyond/7.jpeg">
         <div>2017</div>
         <div>The Waves Beyond</div>
         <div class="col-description">A border-less globe interface celebrating radio technology</div>
@@ -385,18 +417,50 @@
     }
 
     /* ===========================================
-       SOFT-EDGE ALPHA MAP (hazy edges)
-       Canvas radial gradient: solid centre → transparent border
+       SOFT-EDGE ALPHA MAP (rectangular feathered edges)
+       Solid white centre with soft fade on all 4 edges,
+       creating an aquarelle / watercolour look.
        =========================================== */
     var alphaCanvas  = document.createElement('canvas');
     alphaCanvas.width = alphaCanvas.height = 128;
     var actx = alphaCanvas.getContext('2d');
-    var grad = actx.createRadialGradient(64, 64, 24, 64, 64, 64);
-    grad.addColorStop(0,    '#fff');
-    grad.addColorStop(0.50, '#fff');
-    grad.addColorStop(1,    'rgba(0,0,0,0)');
-    actx.fillStyle = grad;
+    var FADE = 28;                 /* fade width in canvas pixels */
+
+    /* Start with solid white */
+    actx.fillStyle = '#fff';
     actx.fillRect(0, 0, 128, 128);
+
+    /* Carve soft edges using destination-out compositing */
+    actx.globalCompositeOperation = 'destination-out';
+
+    /* Left edge */
+    var gL = actx.createLinearGradient(0, 0, FADE, 0);
+    gL.addColorStop(0, 'rgba(0,0,0,1)');
+    gL.addColorStop(1, 'rgba(0,0,0,0)');
+    actx.fillStyle = gL;
+    actx.fillRect(0, 0, FADE, 128);
+
+    /* Right edge */
+    var gR = actx.createLinearGradient(128, 0, 128 - FADE, 0);
+    gR.addColorStop(0, 'rgba(0,0,0,1)');
+    gR.addColorStop(1, 'rgba(0,0,0,0)');
+    actx.fillStyle = gR;
+    actx.fillRect(128 - FADE, 0, FADE, 128);
+
+    /* Top edge */
+    var gT = actx.createLinearGradient(0, 0, 0, FADE);
+    gT.addColorStop(0, 'rgba(0,0,0,1)');
+    gT.addColorStop(1, 'rgba(0,0,0,0)');
+    actx.fillStyle = gT;
+    actx.fillRect(0, 0, 128, FADE);
+
+    /* Bottom edge */
+    var gB = actx.createLinearGradient(0, 128, 0, 128 - FADE);
+    gB.addColorStop(0, 'rgba(0,0,0,1)');
+    gB.addColorStop(1, 'rgba(0,0,0,0)');
+    actx.fillStyle = gB;
+    actx.fillRect(0, 128 - FADE, 128, FADE);
+
     var alphaMap = new THREE.CanvasTexture(alphaCanvas);
 
     /* ===========================================
@@ -428,11 +492,11 @@
 
         var mat = new THREE.MeshBasicMaterial({
           map: texture,
-          alphaMap: alphaMap,          /* hazy edges */
+          alphaMap: alphaMap,          /* soft rectangular edges */
           transparent: true,
           opacity: 0,                 /* start invisible */
           side: THREE.DoubleSide,
-          depthWrite: false
+          depthWrite: true
         });
 
         var mesh = new THREE.Mesh(result.geometry, mat);
@@ -527,6 +591,15 @@
     });
 
     /* ===========================================
+       CLICK — open link when clicking a sphere image
+       =========================================== */
+    renderer.domElement.addEventListener('click', function () {
+      if (hoveredMesh) {
+        window.location.href = 'project.html';
+      }
+    });
+
+    /* ===========================================
        BIO SCROLL-REVEAL
        =========================================== */
     var bio = document.getElementById('bio');
@@ -537,6 +610,35 @@
     }, { threshold: 0.15 });
     observer.observe(bio);
 
+  })();
+
+  /* ===========================================
+     GHOST IMAGE — follows cursor on table row hover
+     =========================================== */
+  (function () {
+    var ghost    = document.getElementById('ghost-wrapper');
+    var ghostImg = document.getElementById('ghost-img');
+    var rows     = document.querySelectorAll('.index-row');
+
+    document.addEventListener('mousemove', function (e) {
+      if (ghost.classList.contains('is-active')) {
+        ghost.style.left = e.clientX + 'px';
+        ghost.style.top  = e.clientY + 'px';
+      }
+    });
+
+    rows.forEach(function (row) {
+      row.addEventListener('mouseenter', function () {
+        var src = row.getAttribute('data-img');
+        if (src) {
+          ghostImg.src = src;
+          ghost.classList.add('is-active');
+        }
+      });
+      row.addEventListener('mouseleave', function () {
+        ghost.classList.remove('is-active');
+      });
+    });
   })();
   </script>
 
