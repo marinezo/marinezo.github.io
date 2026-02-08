@@ -74,6 +74,7 @@
       top: 50%;
       left: 50%;
       will-change: transform, opacity;
+      overflow: hidden;
     }
 
     .sphere-item img {
@@ -160,7 +161,6 @@
     var AUTO_SPEED  = 0.0004;   /* horizontal spin — very slow, steady */
     var DRIFT_AMP   = 0.18;     /* max vertical tilt in radians (~10°) */
     var DRIFT_FREQ  = 0.35;     /* how often drift changes direction (lower = slower) */
-    var CURVE_STRENGTH = 0.55;  /* how much images tilt to follow the sphere surface (0–1) */
 
     var container   = document.getElementById('sphere');
     var cachedRadius = 0;
@@ -248,7 +248,6 @@
        Steady horizontal spin + gentle diagonal drift
        ============================================= */
     var angle = 0;
-    var DEG = 180 / Math.PI;
 
     function animate() {
       angle += AUTO_SPEED;
@@ -286,19 +285,18 @@
         var sx = x2 * r * scale;
         var sy = y2 * r * scale;
 
-        /* Surface-normal rotation: tilt each image to follow
-           the curvature of the sphere.
-           atan2(x,z) → how far left/right the point is
-           asin(y)    → how far up/down the point is */
-        var faceY = Math.atan2(x2, z2) * DEG * CURVE_STRENGTH;
-        var faceX = -Math.asin(Math.max(-1, Math.min(1, y2))) * DEG * CURVE_STRENGTH;
+        /* Depth-based curvature: images near the front stay
+           nearly rectangular; images curving toward the back
+           become progressively rounder — like sheets wrapped
+           on a sphere surface. */
+        var minS = PERSPECTIVE / (PERSPECTIVE + r);
+        var maxS = PERSPECTIVE / (PERSPECTIVE - r);
+        var depth = (scale - minS) / (maxS - minS);        /* 0 = back, 1 = front */
+        var bRadius = 10 + (1 - depth) * 40;               /* 10 % (front) → 50 % (back) */
 
         var item = items[i];
-        item.el.style.transform =
-          'translate(' + sx + 'px,' + sy + 'px) ' +
-          'scale(' + scale + ') ' +
-          'rotateY(' + faceY + 'deg) ' +
-          'rotateX(' + faceX + 'deg)';
+        item.el.style.transform = 'translate(' + sx + 'px,' + sy + 'px) scale(' + scale + ')';
+        item.el.style.borderRadius = bRadius + '%';
         item.el.style.zIndex  = Math.round(scale * 1000);
         item.el.style.opacity = Math.max(0.12, 0.15 + 0.85 * ((scale - 0.55) / 0.9));
       }
