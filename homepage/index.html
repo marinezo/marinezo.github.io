@@ -59,8 +59,6 @@
       justify-content: center;
     }
 
-    /* --- 3D IMAGE SPHERE --- */
-
     .sphere-container {
       position: relative;
       width: 60vh;
@@ -69,22 +67,9 @@
       flex-shrink: 0;
     }
 
-    .sphere-item {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      will-change: transform, opacity;
-      overflow: hidden;
-    }
-
-    .sphere-item img {
+    .sphere-container canvas {
       display: block;
-      object-fit: cover;
-      transition: transform 0.25s ease;
-    }
-
-    .sphere-item:hover img {
-      transform: scale(1.3);
+      touch-action: pan-y;
     }
 
     /* --- BIO SECTION: below the fold, fade-in on scroll --- */
@@ -130,42 +115,40 @@
 </head>
 <body>
 
-  <!-- Sticky: title top center -->
+  <!-- Sticky navigation -->
   <a href="#" class="nav-title" onclick="window.scrollTo({top:0,behavior:'smooth'}); return false;">Marine Zorea</a>
-
-  <!-- Sticky: bottom left link -->
   <a href="#" class="nav-bottom-left">Works and<br>Publications</a>
-
-  <!-- Sticky: bottom right link -->
   <a href="#" class="nav-bottom-right">About and<br>Contact</a>
 
-  <!-- First viewport: sphere centred -->
+  <!-- First viewport: 3D sphere -->
   <div class="hero-section">
     <div class="sphere-container" id="sphere"></div>
   </div>
 
-  <!-- Below the fold: bio (fades in on scroll) -->
+  <!-- Below the fold: bio -->
   <div class="bio-section">
     <p class="bio-text" id="bio">
       Marine Zorea is a designer and researcher exploring the emergent and critical realities of everyday technology through objects, sounds, images, and scholarly writing.
     </p>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
   (function () {
-    /* =============================================
+    /* ===========================================
        CONFIG
-       ============================================= */
-    var ITEM_COUNT  = 20;
-    var PERSPECTIVE = 900;
-    var AUTO_SPEED  = 0.0004;   /* horizontal spin — very slow, steady */
-    var DRIFT_AMP   = 0.18;     /* max vertical tilt in radians (~10°) */
-    var DRIFT_FREQ  = 0.35;     /* how often drift changes direction (lower = slower) */
+       =========================================== */
+    var SPHERE_R   = 150;         /* 3-D sphere radius */
+    var CAM_Z      = 420;         /* camera distance   */
+    var AUTO_SPEED = 0.0004;      /* horizontal spin   */
+    var DRIFT_AMP  = 0.18;        /* vertical tilt max */
+    var DRIFT_FREQ = 0.35;        /* vertical tilt speed */
+    var ANG_SCALE  = 0.005;       /* px → radians for patch size */
+    var SEGS       = 14;          /* subdivisions per patch edge */
 
-    var container   = document.getElementById('sphere');
-    var cachedRadius = 0;
-
-    /* 20 images — alternating square (1:1) and wide (5:3) */
+    /* ===========================================
+       IMAGE DATA — 20 entries
+       =========================================== */
     var imageData = [
       { src: 'https://marinezo.com/img/project_livingsounds/4.JPG',              ratio: 'square', w: 65 },
       { src: 'https://marinezo.com/img/home/thumb_audible.gif',                  ratio: 'wide',   w: 55 },
@@ -189,126 +172,176 @@
       { src: 'https://marinezo.com/img/project_formsofquery/1.png',              ratio: 'wide',   w: 55 }
     ];
 
-    /* =============================================
-       BUILD DOM
-       ============================================= */
-    var items = imageData.map(function (data) {
-      var el = document.createElement('div');
-      el.className = 'sphere-item';
+    /* ===========================================
+       THREE.JS SETUP
+       =========================================== */
+    var container = document.getElementById('sphere');
+    var cW = container.clientWidth;
+    var cH = container.clientHeight;
 
-      var img = document.createElement('img');
-      img.src = data.src;
-      img.alt = '';
-      img.draggable = false;
+    var scene    = new THREE.Scene();
+    var camera   = new THREE.PerspectiveCamera(50, cW / cH, 1, 2000);
+    camera.position.z = CAM_Z;
 
-      var w = data.w;
-      var h = data.ratio === 'square' ? w : Math.round(w * 3 / 5);
+    var renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    renderer.setSize(cW, cH);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x000000, 0);
+    container.appendChild(renderer.domElement);
 
-      img.style.width  = w + 'px';
-      img.style.height = h + 'px';
+    var group = new THREE.Group();
+    scene.add(group);
 
-      el.style.marginLeft = (-w / 2) + 'px';
-      el.style.marginTop  = (-h / 2) + 'px';
+    /* ===========================================
+       CURVED SPHERE-PATCH GEOMETRY
+       Each image is mapped onto a section of
+       actual sphere surface — the pixels curve.
+       =========================================== */
+    function createSpherePatch(R, cTheta, cPhi, angW, angH, wSegs, hSegs) {
+      var verts   = [];
+      var uvs     = [];
+      var indices = [];
 
-      el.appendChild(img);
-      container.appendChild(el);
+      /* Centre of this patch in world space */
+      var cx = R * Math.sin(cTheta) * Math.cos(cPhi);
+      var cy = R * Math.cos(cTheta);
+      var cz = R * Math.sin(cTheta) * Math.sin(cPhi);
 
-      return { el: el, w: w, h: h };
-    });
+      for (var iy = 0; iy <= hSegs; iy++) {
+        for (var ix = 0; ix <= wSegs; ix++) {
+          var u = ix / wSegs;
+          var v = iy / hSegs;
 
-    /* =============================================
-       FIBONACCI SPHERE POINT DISTRIBUTION
-       ============================================= */
-    var golden = (1 + Math.sqrt(5)) / 2;
-    var points = [];
+          var t = cTheta + (v - 0.5) * angH;
+          var p = cPhi   + (u - 0.5) * angW;
 
-    for (var i = 0; i < ITEM_COUNT; i++) {
-      var theta = Math.acos(1 - 2 * (i + 0.5) / ITEM_COUNT);
-      var phi   = 2 * Math.PI * i / golden;
-
-      points.push({
-        ox: Math.sin(theta) * Math.cos(phi),
-        oy: Math.cos(theta),
-        oz: Math.sin(theta) * Math.sin(phi)
-      });
-    }
-
-    /* =============================================
-       CACHE RADIUS
-       ============================================= */
-    function updateRadius() {
-      var rect = container.getBoundingClientRect();
-      cachedRadius = Math.min(rect.width, rect.height) / 2;
-    }
-    updateRadius();
-    window.addEventListener('resize', updateRadius);
-
-    /* =============================================
-       ANIMATION — autonomous, no user input
-       Steady horizontal spin + gentle diagonal drift
-       ============================================= */
-    var angle = 0;
-
-    function animate() {
-      angle += AUTO_SPEED;
-
-      /* Horizontal rotation is constant.
-         Vertical drift follows a slow sine curve so the sphere
-         gently tips up and down while spinning. */
-      var rotY = angle;
-      var rotX = Math.sin(angle * DRIFT_FREQ) * DRIFT_AMP;
-
-      var sinA = Math.sin(rotY);
-      var cosA = Math.cos(rotY);
-      var sinB = Math.sin(rotX);
-      var cosB = Math.cos(rotX);
-
-      var r = cachedRadius;
-
-      for (var i = 0; i < ITEM_COUNT; i++) {
-        var p = points[i];
-
-        /* Rotate around Y (horizontal spin) */
-        var x1 =  cosA * p.ox + sinA * p.oz;
-        var y1 =  p.oy;
-        var z1 = -sinA * p.ox + cosA * p.oz;
-
-        /* Rotate around X (vertical drift) */
-        var x2 = x1;
-        var y2 = cosB * y1 - sinB * z1;
-        var z2 = sinB * y1 + cosB * z1;
-
-        /* Perspective projection */
-        var zWorld = z2 * r;
-        var scale  = PERSPECTIVE / (PERSPECTIVE + zWorld);
-
-        var sx = x2 * r * scale;
-        var sy = y2 * r * scale;
-
-        /* Depth-based curvature: images near the front stay
-           nearly rectangular; images curving toward the back
-           become progressively rounder — like sheets wrapped
-           on a sphere surface. */
-        var minS = PERSPECTIVE / (PERSPECTIVE + r);
-        var maxS = PERSPECTIVE / (PERSPECTIVE - r);
-        var depth = (scale - minS) / (maxS - minS);        /* 0 = back, 1 = front */
-        var bRadius = 10 + (1 - depth) * 40;               /* 10 % (front) → 50 % (back) */
-
-        var item = items[i];
-        item.el.style.transform = 'translate(' + sx + 'px,' + sy + 'px) scale(' + scale + ')';
-        item.el.style.borderRadius = bRadius + '%';
-        item.el.style.zIndex  = Math.round(scale * 1000);
-        item.el.style.opacity = Math.max(0.12, 0.15 + 0.85 * ((scale - 0.55) / 0.9));
+          /* Vertex on sphere surface, offset so mesh origin = patch centre */
+          verts.push(
+            R * Math.sin(t) * Math.cos(p) - cx,
+            R * Math.cos(t) - cy,
+            R * Math.sin(t) * Math.sin(p) - cz
+          );
+          uvs.push(u, 1 - v);
+        }
       }
 
+      for (var iy2 = 0; iy2 < hSegs; iy2++) {
+        for (var ix2 = 0; ix2 < wSegs; ix2++) {
+          var a = iy2 * (wSegs + 1) + ix2;
+          var b = a + 1;
+          var c = a + (wSegs + 1);
+          var d = c + 1;
+          indices.push(a, c, b, b, c, d);
+        }
+      }
+
+      var g = new THREE.BufferGeometry();
+      g.setIndex(indices);
+      g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+      g.setAttribute('uv',       new THREE.Float32BufferAttribute(uvs,   2));
+      g.computeVertexNormals();
+
+      return { geometry: g, center: { x: cx, y: cy, z: cz } };
+    }
+
+    /* ===========================================
+       BUILD PATCHES
+       =========================================== */
+    var loader = new THREE.TextureLoader();
+    loader.setCrossOrigin('anonymous');
+
+    var golden  = (1 + Math.sqrt(5)) / 2;
+    var meshes  = [];
+
+    for (var i = 0; i < imageData.length; i++) {
+      var theta = Math.acos(1 - 2 * (i + 0.5) / imageData.length);
+      var phi   = 2 * Math.PI * i / golden;
+      var data  = imageData[i];
+
+      var angW = data.w * ANG_SCALE;
+      var angH = data.ratio === 'square' ? angW : angW * 3 / 5;
+
+      var result = createSpherePatch(SPHERE_R, theta, phi, angW, angH, SEGS, SEGS);
+
+      var texture = loader.load(data.src);
+      texture.minFilter = THREE.LinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+
+      var mat = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        side: THREE.DoubleSide,
+        depthWrite: true
+      });
+
+      var mesh = new THREE.Mesh(result.geometry, mat);
+      mesh.position.set(result.center.x, result.center.y, result.center.z);
+
+      group.add(mesh);
+      meshes.push(mesh);
+    }
+
+    /* ===========================================
+       HOVER — raycasting
+       =========================================== */
+    var raycaster   = new THREE.Raycaster();
+    var mouseVec    = new THREE.Vector2(-999, -999);
+    var hoveredMesh = null;
+
+    renderer.domElement.addEventListener('mousemove', function (e) {
+      var rect = renderer.domElement.getBoundingClientRect();
+      mouseVec.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
+      mouseVec.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
+    });
+
+    renderer.domElement.addEventListener('mouseleave', function () {
+      mouseVec.set(-999, -999);
+    });
+
+    /* ===========================================
+       ANIMATION
+       =========================================== */
+    function animate() {
       requestAnimationFrame(animate);
+
+      /* Slow horizontal spin + gentle vertical drift */
+      group.rotation.y += AUTO_SPEED;
+      group.rotation.x  = Math.sin(group.rotation.y * DRIFT_FREQ) * DRIFT_AMP;
+
+      /* Hover detection */
+      raycaster.setFromCamera(mouseVec, camera);
+      var hits = raycaster.intersectObjects(group.children);
+
+      if (hoveredMesh) {
+        hoveredMesh.scale.set(1, 1, 1);
+        hoveredMesh = null;
+        renderer.domElement.style.cursor = 'default';
+      }
+      if (hits.length > 0) {
+        hoveredMesh = hits[0].object;
+        hoveredMesh.scale.set(1.15, 1.15, 1.15);
+        renderer.domElement.style.cursor = 'pointer';
+      }
+
+      renderer.render(scene, camera);
     }
 
     animate();
 
-    /* =============================================
+    /* ===========================================
+       RESIZE
+       =========================================== */
+    window.addEventListener('resize', function () {
+      cW = container.clientWidth;
+      cH = container.clientHeight;
+      camera.aspect = cW / cH;
+      camera.updateProjectionMatrix();
+      renderer.setSize(cW, cH);
+    });
+
+    /* ===========================================
        BIO SCROLL-REVEAL
-       ============================================= */
+       =========================================== */
     var bio = document.getElementById('bio');
     var observer = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
