@@ -139,12 +139,13 @@
        CONFIG
        =========================================== */
     var SPHERE_R   = 150;         /* 3-D sphere radius */
-    var CAM_Z      = 420;         /* camera distance   */
+    var CAM_Z      = 330;         /* camera distance (lower = bigger sphere) */
     var AUTO_SPEED = 0.0004;      /* horizontal spin   */
-    var DRIFT_AMP  = 0.18;        /* vertical tilt max */
-    var DRIFT_FREQ = 0.35;        /* vertical tilt speed */
     var ANG_SCALE  = 0.005;       /* px → radians for patch size */
     var SEGS       = 14;          /* subdivisions per patch edge */
+    var BATCH_SIZE = 5;           /* images per fade-in wave */
+    var BATCH_GAP  = 0.6;         /* seconds between waves */
+    var FADE_DUR   = 0.8;         /* seconds per fade */
 
     /* ===========================================
        IMAGE DATA — 20 entries
@@ -245,13 +246,15 @@
     }
 
     /* ===========================================
-       BUILD PATCHES
+       BUILD PATCHES  (start invisible, fade in by batch)
        =========================================== */
     var loader = new THREE.TextureLoader();
     loader.setCrossOrigin('anonymous');
 
     var golden  = (1 + Math.sqrt(5)) / 2;
     var meshes  = [];
+    var loaded  = [];           /* true once texture arrives */
+    var startT  = performance.now() / 1000;
 
     for (var i = 0; i < imageData.length; i++) {
       var theta = Math.acos(1 - 2 * (i + 0.5) / imageData.length);
@@ -263,22 +266,26 @@
 
       var result = createSpherePatch(SPHERE_R, theta, phi, angW, angH, SEGS, SEGS);
 
-      var texture = loader.load(data.src);
-      texture.minFilter = THREE.LinearFilter;
-      texture.magFilter = THREE.LinearFilter;
+      loaded.push(false);
+      (function (idx) {
+        var texture = loader.load(data.src, function () { loaded[idx] = true; });
+        texture.minFilter = THREE.LinearFilter;
+        texture.magFilter = THREE.LinearFilter;
 
-      var mat = new THREE.MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        side: THREE.DoubleSide,
-        depthWrite: true
-      });
+        var mat = new THREE.MeshBasicMaterial({
+          map: texture,
+          transparent: true,
+          opacity: 0,                 /* start invisible */
+          side: THREE.DoubleSide,
+          depthWrite: true
+        });
 
-      var mesh = new THREE.Mesh(result.geometry, mat);
-      mesh.position.set(result.center.x, result.center.y, result.center.z);
+        var mesh = new THREE.Mesh(result.geometry, mat);
+        mesh.position.set(result.center.x, result.center.y, result.center.z);
 
-      group.add(mesh);
-      meshes.push(mesh);
+        group.add(mesh);
+        meshes.push(mesh);
+      })(i);
     }
 
     /* ===========================================
@@ -303,12 +310,37 @@
        =========================================== */
     function animate() {
       requestAnimationFrame(animate);
+      var now = performance.now() / 1000;
+      var elapsed = now - startT;
 
-      /* Slow horizontal spin + gentle vertical drift */
+      /* --- Diagonal drift ---
+         Overlapping sine waves at incommensurate frequencies
+         produce a pseudo-random path that alternates between
+         drifting up-right and down-right. */
       group.rotation.y += AUTO_SPEED;
-      group.rotation.x  = Math.sin(group.rotation.y * DRIFT_FREQ) * DRIFT_AMP;
+      group.rotation.x =
+        Math.sin(group.rotation.y * 0.37) * 0.14 +
+        Math.sin(group.rotation.y * 0.71) * 0.08;
+      group.rotation.z =
+        Math.sin(group.rotation.y * 0.23) * 0.06;
 
-      /* Hover detection */
+      /* --- Batched fade-in ---
+         Each batch waits for its delay AND for its textures
+         to be loaded before fading in. */
+      for (var fi = 0; fi < meshes.length; fi++) {
+        var mat = meshes[fi].material;
+        if (mat.opacity >= 1) continue;
+
+        var batch      = Math.floor(fi / BATCH_SIZE);
+        var batchStart = 0.3 + batch * BATCH_GAP;
+
+        if (loaded[fi] && elapsed > batchStart) {
+          var progress = Math.min(1, (elapsed - batchStart) / FADE_DUR);
+          mat.opacity  = progress;
+        }
+      }
+
+      /* --- Hover detection --- */
       raycaster.setFromCamera(mouseVec, camera);
       var hits = raycaster.intersectObjects(group.children);
 
