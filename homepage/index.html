@@ -50,6 +50,9 @@
     }
 
     /* --- HERO: full viewport, sphere centred --- */
+    /* ↕ gap between top nav and sphere:
+         increase padding-top to push sphere down,
+         or change align-items to flex-end + padding-bottom */
 
     .hero-section {
       width: 100%;
@@ -57,6 +60,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      padding-top: 0;            /* ← nav→sphere gap */
     }
 
     .sphere-container {
@@ -73,12 +77,13 @@
     }
 
     /* --- BIO SECTION: below the fold, fade-in on scroll --- */
+    /* ↕ gap between sphere and bio = padding-top below          */
 
     .bio-section {
       width: 100%;
       display: flex;
       justify-content: center;
-      padding: 80px 20px 160px;
+      padding: 80px 20px 0;       /* ← top = sphere→bio gap     */
     }
 
     .bio-text {
@@ -97,6 +102,46 @@
       transform: translateY(0);
     }
 
+    /* --- WORKS INDEX TABLE --- */
+
+    .works-section {
+      width: 100%;
+      padding: 80px 20px 160px;   /* ← top = bio→table gap      */
+    }
+
+    .index-container {
+      width: 70%;
+      max-width: 70vw;
+      margin: 0 auto;
+    }
+
+    .index-header, .index-row {
+      display: grid;
+      grid-template-columns: 0.8fr 1.5fr 3.5fr 1.2fr;
+      align-items: baseline;
+      padding: 10px 0;
+      border-top: 1px solid #000;
+    }
+
+    .index-header {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-top: none;
+      padding-bottom: 10px;
+    }
+
+    .index-row {
+      font-size: 0.85rem;
+      text-decoration: none;
+      color: inherit;
+      transition: padding-left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .index-row:hover {
+      padding-left: 12px;
+    }
+
     /* --- RESPONSIVE --- */
 
     @media (max-width: 600px) {
@@ -110,6 +155,17 @@
         height: 80vw;
         max-height: 55vh;
       }
+      .index-container {
+        width: 100%;
+        max-width: 100%;
+      }
+      .index-header { display: none; }
+      .index-row {
+        grid-template-columns: 0.5fr 1fr;
+        gap: 8px;
+      }
+      .index-row .col-description,
+      .index-row .col-type { display: none; }
     }
   </style>
 </head>
@@ -132,6 +188,88 @@
     </p>
   </div>
 
+  <!-- Works index table -->
+  <section class="works-section" id="works">
+    <div class="index-container">
+      <div class="index-header">
+        <div>Year</div>
+        <div>Project</div>
+        <div>Description</div>
+        <div>Type</div>
+      </div>
+
+      <a href="project.html" class="index-row">
+        <div>2025</div>
+        <div>The Age of Query</div>
+        <div class="col-description">An exhibition driving the exploration: what is the meaning of technology today?</div>
+        <div class="col-type">Education, Exhibition</div>
+      </a>
+
+      <a href="project.html" class="index-row">
+        <div>2024</div>
+        <div>Re-imagining The Sounds of Home</div>
+        <div class="col-description">Can domestic technology voice post-human ethics?</div>
+        <div class="col-type">Research, Object</div>
+      </a>
+
+      <a href="project.html" class="index-row">
+        <div>2024</div>
+        <div>Empathic Directions for Parental Tech</div>
+        <div class="col-description">Can baby monitor alerts match the ecologies where they exist?</div>
+        <div class="col-type">Research</div>
+      </a>
+
+      <a href="project.html" class="index-row">
+        <div>2023-</div>
+        <div>Thoughtful Object</div>
+        <div class="col-description">A workshop deciphering everyday objects on the verge of embodied theory</div>
+        <div class="col-type">Education, Research</div>
+      </a>
+
+      <a href="project.html" class="index-row">
+        <div>2023</div>
+        <div>Speaking of Collective Dining</div>
+        <div class="col-description">How did kitchen objects and spaces produce a collective living?</div>
+        <div class="col-type">Research</div>
+      </a>
+
+      <a href="project.html" class="index-row">
+        <div>2021, 2023</div>
+        <div>Audible Imagery</div>
+        <div class="col-description">A cross-cultural study on everyday listening through participatory image making</div>
+        <div class="col-type">Research, Exhibition</div>
+      </a>
+
+      <a href="project.html" class="index-row">
+        <div>2019</div>
+        <div>CHANEL Spaces of Transformation</div>
+        <div class="col-description">Introducing CHANEL to Gen-Z through an embodied fitting ritual</div>
+        <div class="col-type">Space Design, Exhibition</div>
+      </a>
+
+      <a href="project.html" class="index-row">
+        <div>2019</div>
+        <div>Living Sounds</div>
+        <div class="col-description">A series of IoT objects for independent living in elders' home</div>
+        <div class="col-type">Object</div>
+      </a>
+
+      <a href="project.html" class="index-row">
+        <div>2018</div>
+        <div>ANA tomo</div>
+        <div class="col-description">A friendly wayfinding journey at the airport and beyond</div>
+        <div class="col-type">Object</div>
+      </a>
+
+      <a href="project.html" class="index-row">
+        <div>2017</div>
+        <div>The Waves Beyond</div>
+        <div class="col-description">A border-less globe interface celebrating radio technology</div>
+        <div class="col-type">Object, Exhibition</div>
+      </a>
+    </div>
+  </section>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
   (function () {
@@ -141,7 +279,8 @@
     var SPHERE_R   = 150;         /* 3-D sphere radius */
     var CAM_Z      = 330;         /* camera distance (lower = bigger sphere) */
     var AUTO_SPEED = 0.0004;      /* horizontal spin   */
-    var ANG_SCALE  = 0.005;       /* px → radians for patch size */
+    var ANG_SCALE  = 0.005;       /* (a) IMAGE SIZE — multiplied by each w value below.
+                                        raise → bigger patches, lower → smaller */
     var SEGS       = 14;          /* subdivisions per patch edge */
     var BATCH_SIZE = 5;           /* images per fade-in wave */
     var BATCH_GAP  = 0.6;         /* seconds between waves */
@@ -246,6 +385,21 @@
     }
 
     /* ===========================================
+       SOFT-EDGE ALPHA MAP (hazy edges)
+       Canvas radial gradient: solid centre → transparent border
+       =========================================== */
+    var alphaCanvas  = document.createElement('canvas');
+    alphaCanvas.width = alphaCanvas.height = 128;
+    var actx = alphaCanvas.getContext('2d');
+    var grad = actx.createRadialGradient(64, 64, 24, 64, 64, 64);
+    grad.addColorStop(0,    '#fff');
+    grad.addColorStop(0.50, '#fff');
+    grad.addColorStop(1,    'rgba(0,0,0,0)');
+    actx.fillStyle = grad;
+    actx.fillRect(0, 0, 128, 128);
+    var alphaMap = new THREE.CanvasTexture(alphaCanvas);
+
+    /* ===========================================
        BUILD PATCHES  (start invisible, fade in by batch)
        =========================================== */
     var loader = new THREE.TextureLoader();
@@ -274,10 +428,11 @@
 
         var mat = new THREE.MeshBasicMaterial({
           map: texture,
+          alphaMap: alphaMap,          /* hazy edges */
           transparent: true,
           opacity: 0,                 /* start invisible */
           side: THREE.DoubleSide,
-          depthWrite: true
+          depthWrite: false
         });
 
         var mesh = new THREE.Mesh(result.geometry, mat);
@@ -314,15 +469,15 @@
       var elapsed = now - startT;
 
       /* --- Diagonal drift ---
+         Uses elapsed time so drift is visible immediately.
          Overlapping sine waves at incommensurate frequencies
-         produce a pseudo-random path that alternates between
-         drifting up-right and down-right. */
+         alternate between drifting up-right and down-right. */
       group.rotation.y += AUTO_SPEED;
       group.rotation.x =
-        Math.sin(group.rotation.y * 0.37) * 0.14 +
-        Math.sin(group.rotation.y * 0.71) * 0.08;
+        Math.sin(elapsed * 0.3)  * 0.22 +
+        Math.sin(elapsed * 0.17) * 0.10;
       group.rotation.z =
-        Math.sin(group.rotation.y * 0.23) * 0.06;
+        Math.sin(elapsed * 0.13) * 0.08;
 
       /* --- Batched fade-in ---
          Each batch waits for its delay AND for its textures
