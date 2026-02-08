@@ -417,36 +417,6 @@
     }
 
     /* ===========================================
-       CUSTOM SHADER — organic dissolving edges
-       Simplex noise perturbs the edge boundary so
-       images fade out with irregular, liquid-like
-       contours (watercolour / aquarelle feel).
-       =========================================== */
-    var vertexShader = [
-      'varying vec2 vUv;',
-      'void main() {',
-      '  vUv = uv;',
-      '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
-      '}'
-    ].join('\n');
-
-    var fragmentShader = [
-      'uniform sampler2D map;',
-      'uniform float opacity;',
-      'varying vec2 vUv;',
-      'void main(){',
-      '  vec4 col=texture2D(map,vUv);',
-      '  float dx=min(vUv.x,1.0-vUv.x);',
-      '  float dy=min(vUv.y,1.0-vUv.y);',
-      /* dx*dy → 0 at every edge, drops faster in corners,
-         giving a natural wash shape instead of a hard rectangle */
-      '  float d=dx*dy;',
-      '  float edge=smoothstep(0.0,0.06,d);',
-      '  gl_FragColor=vec4(col.rgb, col.a*edge*opacity);',
-      '}'
-    ].join('\n');
-
-    /* ===========================================
        BUILD PATCHES  (start invisible, fade in by batch)
        =========================================== */
     var loader = new THREE.TextureLoader();
@@ -473,14 +443,10 @@
         texture.minFilter = THREE.LinearFilter;
         texture.magFilter = THREE.LinearFilter;
 
-        var mat = new THREE.ShaderMaterial({
-          uniforms: {
-            map:     { value: texture },
-            opacity: { value: 0.0 }
-          },
-          vertexShader:   vertexShader,
-          fragmentShader: fragmentShader,
+        var mat = new THREE.MeshBasicMaterial({
+          map: texture,
           transparent: true,
+          opacity: 0,
           side: THREE.DoubleSide,
           depthWrite: true
         });
@@ -533,15 +499,15 @@
          Each batch waits for its delay AND for its textures
          to be loaded before fading in. */
       for (var fi = 0; fi < meshes.length; fi++) {
-        var uOpacity = meshes[fi].material.uniforms.opacity;
-        if (uOpacity.value >= 1) continue;
+        var mat = meshes[fi].material;
+        if (mat.opacity >= 1) continue;
 
         var batch      = Math.floor(fi / BATCH_SIZE);
         var batchStart = 0.3 + batch * BATCH_GAP;
 
         if (loaded[fi] && elapsed > batchStart) {
           var progress = Math.min(1, (elapsed - batchStart) / FADE_DUR);
-          uOpacity.value = progress;
+          mat.opacity  = progress;
         }
       }
 
