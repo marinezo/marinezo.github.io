@@ -49,10 +49,7 @@
       text-align: right;
     }
 
-    /* --- HERO: full viewport, sphere centred --- */
-    /* ↕ gap between top nav and sphere:
-         increase padding-top to push sphere down,
-         or change align-items to flex-end + padding-bottom */
+    /* --- HERO: full viewport, celestial map centred --- */
 
     .hero-section {
       width: 100%;
@@ -60,30 +57,90 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding-top: 0;            /* ← nav→sphere gap */
+      padding-top: 0;
     }
 
-    .sphere-container {
+    .celestial-map {
       position: relative;
-      width: 60vh;
-      height: 60vh;
+      width: 62vh;
+      height: 62vh;
       max-width: 90vw;
+      max-height: 90vw;
       flex-shrink: 0;
     }
 
-    .sphere-container canvas {
-      display: block;
-      touch-action: pan-y;
+    .celestial-map svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
     }
 
-    /* --- BIO SECTION: below the fold, fade-in on scroll --- */
-    /* ↕ gap between sphere and bio = padding-top below          */
+    /* constellation lines */
+    .c-line {
+      stroke: #a8c4d4;
+      stroke-width: 0.7;
+      fill: none;
+      opacity: 0.6;
+    }
+
+    /* star dots */
+    .c-star {
+      fill: #1a1a1a;
+      transition: r 0.3s ease;
+    }
+
+    /* background scatter stars */
+    .bg-star {
+      fill: #888;
+      opacity: 0.35;
+    }
+
+    /* constellation labels */
+    .c-label {
+      font-family: 'Times New Roman', Times, serif;
+      font-style: italic;
+      font-size: 8.5px;
+      fill: #333;
+      pointer-events: none;
+      transition: fill 0.3s ease;
+    }
+
+    /* hover: highlight entire constellation group */
+    .constellation:hover .c-line {
+      stroke: #4a7a94;
+      opacity: 1;
+    }
+    .constellation:hover .c-star {
+      fill: #000;
+    }
+    .constellation:hover .c-label {
+      fill: #000;
+    }
+
+    /* outer ring tick marks */
+    .tick {
+      stroke: #999;
+      stroke-width: 0.4;
+    }
+
+    /* slow rotation */
+    @keyframes celestial-drift {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    .celestial-rotate {
+      transform-origin: center;
+      animation: celestial-drift 360s linear infinite;
+    }
+
+    /* --- BIO SECTION --- */
 
     .bio-section {
       width: 100%;
       display: flex;
       justify-content: center;
-      padding: 80px 20px 0;       /* ← top = sphere→bio gap     */
+      padding: 80px 20px 0;
     }
 
     .bio-text {
@@ -106,7 +163,7 @@
 
     .works-section {
       width: 100%;
-      padding: 80px 15px 160px;   /* ← top = bio→table gap      */
+      padding: 80px 15px 160px;
     }
 
     .index-container {
@@ -142,7 +199,7 @@
       padding-left: 12px;
     }
 
-    /* --- GHOST IMAGE (follows cursor on table hover) --- */
+    /* --- GHOST IMAGE --- */
 
     #ghost-wrapper {
       position: fixed;
@@ -177,10 +234,9 @@
         width: 90%;
         max-width: 90vw;
       }
-      .sphere-container {
-        width: 80vw;
-        height: 80vw;
-        max-height: 55vh;
+      .celestial-map {
+        width: 85vw;
+        height: 85vw;
       }
       .index-container {
         width: 100%;
@@ -203,9 +259,9 @@
   <a href="#" class="nav-bottom-left">Works and<br>Publications</a>
   <a href="#" class="nav-bottom-right">About and<br>Contact</a>
 
-  <!-- First viewport: 3D sphere -->
+  <!-- First viewport: celestial map -->
   <div class="hero-section">
-    <div class="sphere-container" id="sphere"></div>
+    <div class="celestial-map" id="celestial"></div>
   </div>
 
   <!-- Below the fold: bio -->
@@ -215,7 +271,7 @@
     </p>
   </div>
 
-  <!-- Ghost image (follows cursor on table row hover) -->
+  <!-- Ghost image -->
   <div id="ghost-wrapper">
     <img id="ghost-img" src="" alt="">
   </div>
@@ -302,254 +358,210 @@
     </div>
   </section>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
+  /* ===========================================
+     CELESTIAL MAP — semantic constellation diagram
+     =========================================== */
   (function () {
-    /* ===========================================
-       CONFIG
-       =========================================== */
-    var SPHERE_R   = 150;         /* 3-D sphere radius */
-    var CAM_Z      = 330;         /* camera distance (lower = bigger sphere) */
-    var AUTO_SPEED = 0.0004;      /* horizontal spin   */
-    var ANG_SCALE  = 0.005;       /* (a) IMAGE SIZE — multiplied by each w value below.
-                                        raise → bigger patches, lower → smaller */
-    var SEGS       = 14;          /* subdivisions per patch edge */
-    var BATCH_SIZE = 5;           /* images per fade-in wave */
-    var BATCH_GAP  = 0.6;         /* seconds between waves */
-    var FADE_DUR   = 0.8;         /* seconds per fade */
 
-    /* ===========================================
-       IMAGE DATA — 20 entries
-       =========================================== */
-    var imageData = [
-      { src: 'https://marinezo.com/img/project_livingsounds/4.JPG',              ratio: 'square', w: 65 },
-      { src: 'https://marinezo.com/img/home/thumb_audible.gif',                  ratio: 'wide',   w: 55 },
-      { src: 'https://marinezo.com/img/project_allisheard/1.png',                ratio: 'square', w: 50 },
-      { src: 'https://marinezo.com/img/project_anatomo/4.gif',                   ratio: 'wide',   w: 70 },
-      { src: 'https://marinezo.com/img/project_chanelspaces/3.jpg',              ratio: 'square', w: 45 },
-      { src: 'https://marinezo.com/img/home/thumb_CHANEL3.png',                  ratio: 'wide',   w: 60 },
-      { src: 'https://marinezo.com/img/project_speakingofcollectivedining/1.gif',ratio: 'square', w: 55 },
-      { src: 'https://marinezo.com/img/project_wavesbeyond/7.jpeg',              ratio: 'wide',   w: 65 },
-      { src: 'https://marinezo.com/img/project_formsofquery/1.png',              ratio: 'square', w: 75 },
-      { src: 'https://marinezo.com/img/project_thoughtfulobject/6.gif',          ratio: 'wide',   w: 50 },
-      { src: 'https://marinezo.com/img/project_wavesbeyond/1.jpg',              ratio: 'square', w: 60 },
-      { src: 'https://marinezo.com/img/project_livingsounds/4.JPG',              ratio: 'wide',   w: 48 },
-      { src: 'https://marinezo.com/img/home/thumb_audible.gif',                  ratio: 'square', w: 55 },
-      { src: 'https://marinezo.com/img/project_allisheard/1.png',                ratio: 'wide',   w: 65 },
-      { src: 'https://marinezo.com/img/project_anatomo/4.gif',                   ratio: 'square', w: 45 },
-      { src: 'https://marinezo.com/img/project_chanelspaces/3.jpg',              ratio: 'wide',   w: 70 },
-      { src: 'https://marinezo.com/img/home/thumb_CHANEL3.png',                  ratio: 'square', w: 50 },
-      { src: 'https://marinezo.com/img/project_speakingofcollectivedining/1.gif',ratio: 'wide',   w: 58 },
-      { src: 'https://marinezo.com/img/project_wavesbeyond/7.jpeg',              ratio: 'square', w: 48 },
-      { src: 'https://marinezo.com/img/project_formsofquery/1.png',              ratio: 'wide',   w: 55 }
+    var NS = 'http://www.w3.org/2000/svg';
+    var R  = 230;             /* map circle radius */
+    var VB = 260;             /* viewBox half-size */
+
+    /* --- CONSTELLATION DATA ---
+       Each constellation is a semantic field.
+       Stars are concept-nodes; lines connect related ideas.
+       Positions are in SVG coords (0,0 = centre).
+       r = dot radius (visual weight / importance).
+       lines = index pairs into the stars array.          */
+
+    var constellations = [
+      {
+        name: 'listening',
+        stars: [
+          { x: -140, y: -100, r: 3.5, label: 'listening' },
+          { x: -95,  y: -130, r: 2.5, label: 'sonic' },
+          { x: -165, y: -60,  r: 3,   label: 'voice' },
+          { x: -60,  y: -95,  r: 2,   label: 'radio' },
+          { x: -115, y: -55,  r: 2.8, label: 'waves' }
+        ],
+        lines: [[0,1],[0,2],[0,4],[1,3],[3,4]]
+      },
+      {
+        name: 'dwelling',
+        stars: [
+          { x: -125, y: 55,  r: 3.5, label: 'home' },
+          { x: -75,  y: 85,  r: 2,   label: 'dwelling' },
+          { x: -155, y: 100, r: 2.5, label: 'kitchen' },
+          { x: -55,  y: 45,  r: 2.2, label: 'ecology' },
+          { x: -100, y: 125, r: 2.8, label: 'space' }
+        ],
+        lines: [[0,1],[0,2],[1,3],[0,4],[2,4]]
+      },
+      {
+        name: 'materiality',
+        stars: [
+          { x: 100, y: -55, r: 3.8, label: 'objects' },
+          { x: 140, y: -80, r: 2.8, label: 'everyday' },
+          { x: 160, y: -35, r: 2,   label: 'material' },
+          { x: 75,  y: -20, r: 2.5, label: 'things' }
+        ],
+        lines: [[0,1],[0,2],[0,3],[1,2]]
+      },
+      {
+        name: 'body',
+        stars: [
+          { x: 70,  y: -150, r: 3,   label: 'embodiment' },
+          { x: 120, y: -165, r: 2.5, label: 'ritual' },
+          { x: 150, y: -130, r: 2,   label: 'transformation' },
+          { x: 45,  y: -120, r: 2.8, label: 'wayfinding' },
+          { x: 105, y: -120, r: 2,   label: 'journey' }
+        ],
+        lines: [[0,1],[1,2],[0,3],[0,4],[1,4]]
+      },
+      {
+        name: 'inquiry',
+        stars: [
+          { x: -15, y: 5,    r: 4,   label: 'technology' },
+          { x: 25,  y: 35,   r: 3,   label: 'ethics' },
+          { x: -45, y: 40,   r: 2.2, label: 'post-human' },
+          { x: 10,  y: -35,  r: 2.5, label: 'query' },
+          { x: -35, y: -15,  r: 2,   label: 'meaning' }
+        ],
+        lines: [[0,1],[0,2],[0,3],[3,4],[1,2],[0,4]]
+      },
+      {
+        name: 'social',
+        stars: [
+          { x: 85,  y: 90,  r: 3,   label: 'collective' },
+          { x: 130, y: 115, r: 2,   label: 'communal' },
+          { x: 60,  y: 130, r: 2.5, label: 'participatory' },
+          { x: 150, y: 75,  r: 2.2, label: 'care' },
+          { x: 110, y: 150, r: 2.5, label: 'pedagogy' }
+        ],
+        lines: [[0,1],[0,2],[1,3],[0,4],[2,4]]
+      }
     ];
 
-    /* ===========================================
-       THREE.JS SETUP
-       =========================================== */
-    var container = document.getElementById('sphere');
-    var cW = container.clientWidth;
-    var cH = container.clientHeight;
-
-    var scene    = new THREE.Scene();
-    var camera   = new THREE.PerspectiveCamera(50, cW / cH, 1, 2000);
-    camera.position.z = CAM_Z;
-
-    var renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-    renderer.setSize(cW, cH);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setClearColor(0x000000, 0);
-    container.appendChild(renderer.domElement);
-
-    var group = new THREE.Group();
-    scene.add(group);
-
-    /* ===========================================
-       CURVED SPHERE-PATCH GEOMETRY
-       Each image is mapped onto a section of
-       actual sphere surface — the pixels curve.
-       =========================================== */
-    function createSpherePatch(R, cTheta, cPhi, angW, angH, wSegs, hSegs) {
-      var verts   = [];
-      var uvs     = [];
-      var indices = [];
-
-      /* Centre of this patch in world space */
-      var cx = R * Math.sin(cTheta) * Math.cos(cPhi);
-      var cy = R * Math.cos(cTheta);
-      var cz = R * Math.sin(cTheta) * Math.sin(cPhi);
-
-      for (var iy = 0; iy <= hSegs; iy++) {
-        for (var ix = 0; ix <= wSegs; ix++) {
-          var u = ix / wSegs;
-          var v = iy / hSegs;
-
-          var t = cTheta + (v - 0.5) * angH;
-          var p = cPhi   + (u - 0.5) * angW;
-
-          /* Vertex on sphere surface, offset so mesh origin = patch centre */
-          verts.push(
-            R * Math.sin(t) * Math.cos(p) - cx,
-            R * Math.cos(t) - cy,
-            R * Math.sin(t) * Math.sin(p) - cz
-          );
-          uvs.push(u, 1 - v);
-        }
+    /* --- BACKGROUND SCATTER ---
+       Small unlabelled dots to fill the sky. */
+    var bgStars = [];
+    var seed = 7;
+    function rng() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+    for (var b = 0; b < 55; b++) {
+      var bx = (rng() - 0.5) * 2 * (R - 10);
+      var by = (rng() - 0.5) * 2 * (R - 10);
+      if (Math.sqrt(bx * bx + by * by) < R - 8) {
+        bgStars.push({ x: bx, y: by, r: 0.6 + rng() * 1.2 });
       }
-
-      for (var iy2 = 0; iy2 < hSegs; iy2++) {
-        for (var ix2 = 0; ix2 < wSegs; ix2++) {
-          var a = iy2 * (wSegs + 1) + ix2;
-          var b = a + 1;
-          var c = a + (wSegs + 1);
-          var d = c + 1;
-          indices.push(a, c, b, b, c, d);
-        }
-      }
-
-      var g = new THREE.BufferGeometry();
-      g.setIndex(indices);
-      g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
-      g.setAttribute('uv',       new THREE.Float32BufferAttribute(uvs,   2));
-      g.computeVertexNormals();
-
-      return { geometry: g, center: { x: cx, y: cy, z: cz } };
     }
 
-    /* ===========================================
-       BUILD PATCHES  (start invisible, fade in by batch)
-       =========================================== */
-    var loader = new THREE.TextureLoader();
-    loader.setCrossOrigin('anonymous');
+    /* --- BUILD SVG --- */
+    var container = document.getElementById('celestial');
+    var svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', -VB + ' ' + -VB + ' ' + (VB * 2) + ' ' + (VB * 2));
+    svg.setAttribute('xmlns', NS);
 
-    var golden  = (1 + Math.sqrt(5)) / 2;
-    var meshes  = [];
-    var loaded  = [];           /* true once texture arrives */
-    var startT  = performance.now() / 1000;
+    /* Clip to circle */
+    var defs = document.createElementNS(NS, 'defs');
+    var clipPath = document.createElementNS(NS, 'clipPath');
+    clipPath.setAttribute('id', 'map-clip');
+    var clipCircle = document.createElementNS(NS, 'circle');
+    clipCircle.setAttribute('cx', '0');
+    clipCircle.setAttribute('cy', '0');
+    clipCircle.setAttribute('r', R);
+    clipPath.appendChild(clipCircle);
+    defs.appendChild(clipPath);
+    svg.appendChild(defs);
 
-    for (var i = 0; i < imageData.length; i++) {
-      var theta = Math.acos(1 - 2 * (i + 0.5) / imageData.length);
-      var phi   = 2 * Math.PI * i / golden;
-      var data  = imageData[i];
+    /* Outer border circle */
+    var border = document.createElementNS(NS, 'circle');
+    border.setAttribute('cx', '0');
+    border.setAttribute('cy', '0');
+    border.setAttribute('r', R);
+    border.setAttribute('fill', 'none');
+    border.setAttribute('stroke', '#222');
+    border.setAttribute('stroke-width', '0.8');
+    svg.appendChild(border);
 
-      var angW = data.w * ANG_SCALE;
-      var angH = data.ratio === 'square' ? angW : angW * 3 / 5;
+    /* Tick marks around the border (every 10 degrees) */
+    var tickGroup = document.createElementNS(NS, 'g');
+    for (var deg = 0; deg < 360; deg += 10) {
+      var rad = deg * Math.PI / 180;
+      var isMajor = deg % 30 === 0;
+      var innerR = isMajor ? R - 6 : R - 3.5;
+      var tick = document.createElementNS(NS, 'line');
+      tick.setAttribute('x1', Math.cos(rad) * innerR);
+      tick.setAttribute('y1', Math.sin(rad) * innerR);
+      tick.setAttribute('x2', Math.cos(rad) * R);
+      tick.setAttribute('y2', Math.sin(rad) * R);
+      tick.setAttribute('class', 'tick');
+      tickGroup.appendChild(tick);
+    }
+    svg.appendChild(tickGroup);
 
-      var result = createSpherePatch(SPHERE_R, theta, phi, angW, angH, SEGS, SEGS);
+    /* Content group — this is what rotates */
+    var rotateGroup = document.createElementNS(NS, 'g');
+    rotateGroup.setAttribute('class', 'celestial-rotate');
+    rotateGroup.setAttribute('clip-path', 'url(#map-clip)');
 
-      loaded.push(false);
-      (function (idx) {
-        var texture = loader.load(data.src, function () { loaded[idx] = true; });
-        texture.minFilter = THREE.LinearFilter;
-        texture.magFilter = THREE.LinearFilter;
-
-        var mat = new THREE.MeshBasicMaterial({
-          map: texture,
-          transparent: true,
-          opacity: 0,
-          side: THREE.DoubleSide,
-          depthWrite: true
-        });
-
-        var mesh = new THREE.Mesh(result.geometry, mat);
-        mesh.position.set(result.center.x, result.center.y, result.center.z);
-
-        group.add(mesh);
-        meshes.push(mesh);
-      })(i);
+    /* Background stars */
+    for (var bi = 0; bi < bgStars.length; bi++) {
+      var bs = bgStars[bi];
+      var bDot = document.createElementNS(NS, 'circle');
+      bDot.setAttribute('cx', bs.x);
+      bDot.setAttribute('cy', bs.y);
+      bDot.setAttribute('r', bs.r);
+      bDot.setAttribute('class', 'bg-star');
+      rotateGroup.appendChild(bDot);
     }
 
-    /* ===========================================
-       HOVER — raycasting
-       =========================================== */
-    var raycaster   = new THREE.Raycaster();
-    var mouseVec    = new THREE.Vector2(-999, -999);
-    var hoveredMesh = null;
+    /* Constellation groups */
+    for (var ci = 0; ci < constellations.length; ci++) {
+      var c = constellations[ci];
+      var g = document.createElementNS(NS, 'g');
+      g.setAttribute('class', 'constellation');
 
-    renderer.domElement.addEventListener('mousemove', function (e) {
-      var rect = renderer.domElement.getBoundingClientRect();
-      mouseVec.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
-      mouseVec.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
-    });
-
-    renderer.domElement.addEventListener('mouseleave', function () {
-      mouseVec.set(-999, -999);
-    });
-
-    /* ===========================================
-       ANIMATION
-       =========================================== */
-    function animate() {
-      requestAnimationFrame(animate);
-      var now = performance.now() / 1000;
-      var elapsed = now - startT;
-
-      /* --- Diagonal drift ---
-         Uses elapsed time so drift is visible immediately.
-         Overlapping sine waves at incommensurate frequencies
-         alternate between drifting up-right and down-right. */
-      group.rotation.y += AUTO_SPEED;
-      group.rotation.x =
-        Math.sin(elapsed * 0.3)  * 0.22 +
-        Math.sin(elapsed * 0.17) * 0.10;
-      group.rotation.z =
-        Math.sin(elapsed * 0.13) * 0.08;
-
-      /* --- Batched fade-in ---
-         Each batch waits for its delay AND for its textures
-         to be loaded before fading in. */
-      for (var fi = 0; fi < meshes.length; fi++) {
-        var mat = meshes[fi].material;
-        if (mat.opacity >= 1) continue;
-
-        var batch      = Math.floor(fi / BATCH_SIZE);
-        var batchStart = 0.3 + batch * BATCH_GAP;
-
-        if (loaded[fi] && elapsed > batchStart) {
-          var progress = Math.min(1, (elapsed - batchStart) / FADE_DUR);
-          mat.opacity  = progress;
-        }
+      /* Lines first (behind dots) */
+      for (var li = 0; li < c.lines.length; li++) {
+        var a = c.stars[c.lines[li][0]];
+        var b2 = c.stars[c.lines[li][1]];
+        var line = document.createElementNS(NS, 'line');
+        line.setAttribute('x1', a.x);
+        line.setAttribute('y1', a.y);
+        line.setAttribute('x2', b2.x);
+        line.setAttribute('y2', b2.y);
+        line.setAttribute('class', 'c-line');
+        g.appendChild(line);
       }
 
-      /* --- Hover detection --- */
-      raycaster.setFromCamera(mouseVec, camera);
-      var hits = raycaster.intersectObjects(group.children);
-
-      if (hoveredMesh) {
-        hoveredMesh.scale.set(1, 1, 1);
-        hoveredMesh = null;
-        renderer.domElement.style.cursor = 'default';
-      }
-      if (hits.length > 0) {
-        hoveredMesh = hits[0].object;
-        hoveredMesh.scale.set(1.15, 1.15, 1.15);
-        renderer.domElement.style.cursor = 'pointer';
+      /* Stars (dots) */
+      for (var si = 0; si < c.stars.length; si++) {
+        var s = c.stars[si];
+        var dot = document.createElementNS(NS, 'circle');
+        dot.setAttribute('cx', s.x);
+        dot.setAttribute('cy', s.y);
+        dot.setAttribute('r', s.r);
+        dot.setAttribute('class', 'c-star');
+        g.appendChild(dot);
       }
 
-      renderer.render(scene, camera);
+      /* Labels */
+      for (var ti = 0; ti < c.stars.length; ti++) {
+        var st = c.stars[ti];
+        var txt = document.createElementNS(NS, 'text');
+        txt.setAttribute('x', st.x + st.r + 4);
+        txt.setAttribute('y', st.y + 3);
+        txt.setAttribute('class', 'c-label');
+        txt.textContent = st.label;
+        g.appendChild(txt);
+      }
+
+      rotateGroup.appendChild(g);
     }
 
-    animate();
-
-    /* ===========================================
-       RESIZE
-       =========================================== */
-    window.addEventListener('resize', function () {
-      cW = container.clientWidth;
-      cH = container.clientHeight;
-      camera.aspect = cW / cH;
-      camera.updateProjectionMatrix();
-      renderer.setSize(cW, cH);
-    });
-
-    /* ===========================================
-       CLICK — open link when clicking a sphere image
-       =========================================== */
-    renderer.domElement.addEventListener('click', function () {
-      if (hoveredMesh) {
-        window.location.href = 'project.html';
-      }
-    });
+    svg.appendChild(rotateGroup);
+    container.appendChild(svg);
 
     /* ===========================================
        BIO SCROLL-REVEAL
