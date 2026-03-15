@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D Axis Diagram</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; font-family: Arial, sans-serif; }
+    canvas { display: block; }
+    #tooltip {
+      position: fixed;
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+      padding: 5px 10px;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.25);
+      pointer-events: none;
+      display: none;
+      white-space: nowrap;
+    }
+    #hint {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.35);
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      pointer-events: none;
+      letter-spacing: 0.04em;
+    }
+  </style>
+</head>
+<body>
+<div id="tooltip"></div>
+<div id="hint">drag to rotate &nbsp;·&nbsp; scroll to zoom</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
+<script>
+// ─── Scene setup ─────────────────────────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 1000);
+camera.position.set(5, 4, 7);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(devicePixelRatio);
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// ─── Axis helpers ─────────────────────────────────────────────────────────────
+const AXIS_LEN = 3;
+const LINE_W   = 2;   // linewidth (WebGL limited to 1 on most GPUs; we use custom tubes)
+
+function makeLine(from, to, color) {
+  const mat = new THREE.LineBasicMaterial({ color, linewidth: LINE_W });
+  const geo = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(...from),
+    new THREE.Vector3(...to)
+  ]);
+  return new THREE.Line(geo, mat);
+}
+
+// Axes: X=red, Y=green, Z=blue
+const axes = [
+  { dir: [1,0,0], color: 0xff4444, label1: 'X+', label2: 'X−' },
+  { dir: [0,1,0], color: 0x44ff44, label1: 'Y+', label2: 'Y−' },
+  { dir: [0,0,1], color: 0x4488ff, label1: 'Z+', label2: 'Z−' },
+];
+
+axes.forEach(({ dir, color }) => {
+  scene.add(makeLine(
+    dir.map(v => -v * AXIS_LEN),
+    dir.map(v =>  v * AXIS_LEN),
+    color
+  ));
+});
+
+// ─── Sprite label helper ──────────────────────────────────────────────────────
+function makeLabel(text, color = '#ffffff', size = 64, scale = 0.55) {
+  const canvas = document.createElement('canvas');
+  canvas.width  = 256;
+  canvas.height = size + 10;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.font      = `bold ${size}px Arial`;
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+  const tex = new THREE.CanvasTexture(canvas);
+  const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
+  const sprite = new THREE.Sprite(mat);
+  const aspect = canvas.width / canvas.height;
+  sprite.scale.set(scale * aspect, scale, 1);
+  return sprite;
+}
+
+// Axis end labels
+const axisLabels = [
+  { pos: [ AXIS_LEN + 0.4, 0, 0], text: 'X+', color: '#ff6666' },
+  { pos: [-AXIS_LEN - 0.4, 0, 0], text: 'X−', color: '#ff6666' },
+  { pos: [0,  AXIS_LEN + 0.4, 0], text: 'Y+', color: '#66ff66' },
+  { pos: [0, -AXIS_LEN - 0.4, 0], text: 'Y−', color: '#66ff66' },
+  { pos: [0, 0,  AXIS_LEN + 0.4], text: 'Z+', color: '#6699ff' },
+  { pos: [0, 0, -AXIS_LEN - 0.4], text: 'Z−', color: '#6699ff' },
+];
+
+axisLabels.forEach(({ pos, text, color }) => {
+  const s = makeLabel(text, color, 72, 0.6);
+  s.position.set(...pos);
+  scene.add(s);
+});
+
+// ─── Points ───────────────────────────────────────────────────────────────────
+const pointData = [
+  { pos: [ 1.5,  1.0,  0.5], name: 'Point 1' },
+  { pos: [-1.0,  2.0, -0.8], name: 'Point 2' },
+  { pos: [ 0.5, -1.5,  2.0], name: 'Point 3' },
+  { pos: [-2.0, -0.5,  1.0], name: 'Point 4' },
+  { pos: [ 2.2,  0.5, -1.5], name: 'Point 5' },
+  { pos: [-0.5,  1.8,  1.5], name: 'Point 6' },
+  { pos: [ 1.0, -2.0, -1.0], name: 'Point 7' },
+  { pos: [-1.5,  0.8, -2.0], name: 'Point 8' },
+];
+
+const POINT_RADIUS      = 0.10;
+const POINT_RADIUS_HOV  = 0.15;
+const POINT_COLOR       = 0xffffff;
+const POINT_COLOR_HOV   = 0xffdd44;
+
+const pointMeshes = [];
+
+pointData.forEach(({ pos, name }, i) => {
+  const geo  = new THREE.SphereGeometry(POINT_RADIUS, 20, 20);
+  const mat  = new THREE.MeshBasicMaterial({ color: POINT_COLOR });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(...pos);
+  mesh.userData = { name, baseRadius: POINT_RADIUS, hovered: false, index: i };
+  scene.add(mesh);
+  pointMeshes.push(mesh);
+
+  // Point label (slightly offset from sphere)
+  const lbl = makeLabel(name, '#ffffff', 48, 0.7);
+  lbl.position.set(pos[0] + 0.22, pos[1] + 0.22, pos[2]);
+  scene.add(lbl);
+});
+
+// ─── Interaction: orbit ───────────────────────────────────────────────────────
+let isDragging = false;
+let prevMouse  = { x: 0, y: 0 };
+const spherical = { theta: Math.atan2(camera.position.x, camera.position.z),
+                    phi:   Math.acos(camera.position.y / camera.position.length()),
+                    r:     camera.position.length() };
+
+function updateCamera() {
+  const sinPhi = Math.sin(spherical.phi);
+  camera.position.set(
+    spherical.r * sinPhi * Math.sin(spherical.theta),
+    spherical.r * Math.cos(spherical.phi),
+    spherical.r * sinPhi * Math.cos(spherical.theta)
+  );
+  camera.lookAt(0, 0, 0);
+}
+
+renderer.domElement.addEventListener('mousedown', e => {
+  isDragging = true;
+  prevMouse = { x: e.clientX, y: e.clientY };
+});
+window.addEventListener('mouseup', () => { isDragging = false; });
+window.addEventListener('mousemove', e => {
+  if (isDragging) {
+    const dx = e.clientX - prevMouse.x;
+    const dy = e.clientY - prevMouse.y;
+    spherical.theta -= dx * 0.005;
+    spherical.phi    = Math.max(0.05, Math.min(Math.PI - 0.05, spherical.phi + dy * 0.005));
+    prevMouse = { x: e.clientX, y: e.clientY };
+    updateCamera();
+  }
+});
+renderer.domElement.addEventListener('wheel', e => {
+  spherical.r = Math.max(2, Math.min(20, spherical.r + e.deltaY * 0.01));
+  updateCamera();
+  e.preventDefault();
+}, { passive: false });
+
+// Touch support
+let lastTouch = null;
+let lastPinchDist = null;
+renderer.domElement.addEventListener('touchstart', e => {
+  if (e.touches.length === 1) {
+    isDragging = true;
+    prevMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  } else if (e.touches.length === 2) {
+    isDragging = false;
+    lastPinchDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+  }
+  e.preventDefault();
+}, { passive: false });
+renderer.domElement.addEventListener('touchmove', e => {
+  if (e.touches.length === 1 && isDragging) {
+    const dx = e.touches[0].clientX - prevMouse.x;
+    const dy = e.touches[0].clientY - prevMouse.y;
+    spherical.theta -= dx * 0.005;
+    spherical.phi    = Math.max(0.05, Math.min(Math.PI - 0.05, spherical.phi + dy * 0.005));
+    prevMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    updateCamera();
+  } else if (e.touches.length === 2) {
+    const dist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    if (lastPinchDist) {
+      spherical.r = Math.max(2, Math.min(20, spherical.r - (dist - lastPinchDist) * 0.02));
+      updateCamera();
+    }
+    lastPinchDist = dist;
+  }
+  e.preventDefault();
+}, { passive: false });
+renderer.domElement.addEventListener('touchend', () => {
+  isDragging = false;
+  lastPinchDist = null;
+});
+
+// ─── Hover / raycasting ───────────────────────────────────────────────────────
+const raycaster = new THREE.Raycaster();
+const mouse2d   = new THREE.Vector2();
+const tooltip   = document.getElementById('tooltip');
+
+window.addEventListener('mousemove', e => {
+  if (isDragging) { tooltip.style.display = 'none'; return; }
+
+  mouse2d.x =  (e.clientX / innerWidth)  * 2 - 1;
+  mouse2d.y = -(e.clientY / innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse2d, camera);
+  const hits = raycaster.intersectObjects(pointMeshes);
+
+  pointMeshes.forEach(m => {
+    const isHit = hits.length > 0 && hits[0].object === m;
+    if (isHit && !m.userData.hovered) {
+      m.userData.hovered = true;
+      m.scale.setScalar(POINT_RADIUS_HOV / POINT_RADIUS);
+      m.material.color.setHex(POINT_COLOR_HOV);
+    } else if (!isHit && m.userData.hovered) {
+      m.userData.hovered = false;
+      m.scale.setScalar(1);
+      m.material.color.setHex(POINT_COLOR);
+    }
+  });
+
+  if (hits.length > 0) {
+    tooltip.style.display = 'block';
+    tooltip.style.left = (e.clientX + 14) + 'px';
+    tooltip.style.top  = (e.clientY - 10) + 'px';
+    tooltip.textContent = hits[0].object.userData.name;
+    document.body.style.cursor = 'pointer';
+  } else {
+    tooltip.style.display = 'none';
+    document.body.style.cursor = isDragging ? 'grabbing' : 'grab';
+  }
+});
+
+renderer.domElement.addEventListener('mousedown', () => {
+  document.body.style.cursor = 'grabbing';
+});
+window.addEventListener('mouseup', () => {
+  document.body.style.cursor = 'grab';
+});
+document.body.style.cursor = 'grab';
+
+// ─── Resize ───────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// ─── Render loop ──────────────────────────────────────────────────────────────
+function animate() {
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>
