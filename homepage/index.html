@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marine Zorea</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      font-family: 'Times New Roman', Times, serif;
+      background: #f4f4f4;
+      color: #000;
+      overflow-x: hidden;
+    }
+
+    a { text-decoration: none; color: inherit; }
+
+    /* --- STICKY NAVIGATION --- */
+
+    .nav-title {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 1rem;
+      z-index: 100;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+
+    .nav-bottom-left {
+      position: fixed;
+      bottom: 24px;
+      left: 24px;
+      font-size: 1rem;
+      z-index: 100;
+      line-height: 1.35;
+    }
+
+    .nav-bottom-right {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      font-size: 1rem;
+      z-index: 100;
+      line-height: 1.35;
+      text-align: right;
+    }
+
+    /* --- HERO: full viewport, video centred --- */
+
+    .hero-section {
+      width: 100%;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding-top: 0;
+    }
+
+    .hero-video {
+      position: relative;
+      width: 55vh;
+      max-width: 85vw;
+      aspect-ratio: 16 / 9;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .hero-video iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    /* --- BIO SECTION --- */
+
+    .bio-section {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      padding: 80px 20px 0;
+    }
+
+    .bio-text {
+      width: 70%;
+      max-width: 70vw;
+      text-align: center;
+      font-size: 1.8rem;
+      line-height: 1.4;
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 1s ease, transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .bio-text.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* --- WORKS INDEX TABLE --- */
+
+    .works-section {
+      width: 100%;
+      padding: 80px 15px 160px;
+    }
+
+    .index-container {
+      width: 100%;
+      max-width: 100%;
+      margin: 0 auto;
+    }
+
+    .index-header, .index-row {
+      display: grid;
+      grid-template-columns: 0.8fr 1.5fr 3.5fr 1.2fr;
+      align-items: baseline;
+      padding: 10px 0;
+      border-top: 1px solid #000;
+    }
+
+    .index-header {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-top: none;
+      padding-bottom: 10px;
+    }
+
+    .index-row {
+      font-size: 0.85rem;
+      text-decoration: none;
+      color: inherit;
+      transition: padding-left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .index-row:hover {
+      padding-left: 12px;
+    }
+
+    /* --- GHOST IMAGE --- */
+
+    #ghost-wrapper {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 360px;
+      height: 270px;
+      pointer-events: none;
+      z-index: 50;
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.8);
+      transition: opacity 0.2s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      mix-blend-mode: multiply;
+    }
+
+    #ghost-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    #ghost-wrapper.is-active {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    /* --- RESPONSIVE --- */
+
+    @media (max-width: 600px) {
+      .bio-text {
+        font-size: 1.3rem;
+        width: 90%;
+        max-width: 90vw;
+      }
+      .hero-video {
+        width: 90vw;
+      }
+      .index-container {
+        width: 100%;
+        max-width: 100%;
+      }
+      .index-header { display: none; }
+      .index-row {
+        grid-template-columns: 0.5fr 1fr;
+        gap: 8px;
+      }
+      .index-row .col-description,
+      .index-row .col-type { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sticky navigation -->
+  <a href="#" class="nav-title" onclick="window.scrollTo({top:0,behavior:'smooth'}); return false;">Marine Zorea</a>
+  <a href="#" class="nav-bottom-left">Works and<br>Publications</a>
+  <a href="#" class="nav-bottom-right">About and<br>Contact</a>
+
+  <!-- First viewport: hero video -->
+  <div class="hero-section">
+    <div class="hero-video">
+      <iframe src="https://player.vimeo.com/video/1163060000?background=1&autoplay=1&loop=1&muted=1"
+              allow="autoplay; fullscreen"
+              allowfullscreen></iframe>
+    </div>
+  </div>
+
+  <!-- Below the fold: bio -->
+  <div class="bio-section">
+    <p class="bio-text" id="bio">
+      Marine Zorea is a designer and researcher exploring the emergent and critical realities of everyday technology through objects, sounds, images, and scholarly writing.
+    </p>
+  </div>
+
+  <!-- Ghost image -->
+  <div id="ghost-wrapper">
+    <img id="ghost-img" src="" alt="">
+  </div>
+
+  <!-- Works index table -->
+  <section class="works-section" id="works">
+    <div class="index-container">
+      <div class="index-header">
+        <div>Year</div>
+        <div>Project</div>
+        <div>Description</div>
+        <div>Type</div>
+      </div>
+
+      <a href="project.html" class="index-row" data-img="https://marinezo.com/img/project_formsofquery/1.png">
+        <div>2025</div>
+        <div>The Age of Query</div>
+        <div class="col-description">An exhibition driving the exploration: what is the meaning of technology today?</div>
+        <div class="col-type">Education, Exhibition</div>
+      </a>
+
+      <a href="project.html" class="index-row" data-img="https://marinezo.com/img/project_allisheard/1.png">
+        <div>2024</div>
+        <div>Re-imagining The Sounds of Home</div>
+        <div class="col-description">Can domestic technology voice post-human ethics?</div>
+        <div class="col-type">Research, Object</div>
+      </a>
+
+      <a href="project.html" class="index-row" data-img="https://marinezo.com/img/project_livingsounds/4.JPG">
+        <div>2024</div>
+        <div>Empathic Directions for Parental Tech</div>
+        <div class="col-description">Can baby monitor alerts match the ecologies where they exist?</div>
+        <div class="col-type">Research</div>
+      </a>
+
+      <a href="project.html" class="index-row" data-img="https://marinezo.com/img/project_thoughtfulobject/6.gif">
+        <div>2023-</div>
+        <div>Thoughtful Object</div>
+        <div class="col-description">A workshop deciphering everyday objects on the verge of embodied theory</div>
+        <div class="col-type">Education, Research</div>
+      </a>
+
+      <a href="project.html" class="index-row" data-img="https://marinezo.com/img/project_speakingofcollectivedining/1.gif">
+        <div>2023</div>
+        <div>Speaking of Collective Dining</div>
+        <div class="col-description">How did kitchen objects and spaces produce a collective living?</div>
+        <div class="col-type">Research</div>
+      </a>
+
+      <a href="project.html" class="index-row" data-img="https://marinezo.com/img/home/thumb_audible.gif">
+        <div>2021, 2023</div>
+        <div>Audible Imagery</div>
+        <div class="col-description">A cross-cultural study on everyday listening through participatory image making</div>
+        <div class="col-type">Research, Exhibition</div>
+      </a>
+
+      <a href="project.html" class="index-row" data-img="https://marinezo.com/img/project_chanelspaces/3.jpg">
+        <div>2019</div>
+        <div>CHANEL Spaces of Transformation</div>
+        <div class="col-description">Introducing CHANEL to Gen-Z through an embodied fitting ritual</div>
+        <div class="col-type">Space Design, Exhibition</div>
+      </a>
+
+      <a href="project.html" class="index-row" data-img="https://marinezo.com/img/project_livingsounds/4.JPG">
+        <div>2019</div>
+        <div>Living Sounds</div>
+        <div class="col-description">A series of IoT objects for independent living in elders' home</div>
+        <div class="col-type">Object</div>
+      </a>
+
+      <a href="project.html" class="index-row" data-img="https://marinezo.com/img/project_anatomo/4.gif">
+        <div>2018</div>
+        <div>ANA tomo</div>
+        <div class="col-description">A friendly wayfinding journey at the airport and beyond</div>
+        <div class="col-type">Object</div>
+      </a>
+
+      <a href="project.html" class="index-row" data-img="https://marinezo.com/img/project_wavesbeyond/7.jpeg">
+        <div>2017</div>
+        <div>The Waves Beyond</div>
+        <div class="col-description">A border-less globe interface celebrating radio technology</div>
+        <div class="col-type">Object, Exhibition</div>
+      </a>
+    </div>
+  </section>
+
+  <script>
+  /* ===========================================
+     BIO SCROLL-REVEAL
+     =========================================== */
+  (function () {
+    var bio = document.getElementById('bio');
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) bio.classList.add('visible');
+      });
+    }, { threshold: 0.15 });
+    observer.observe(bio);
+  })();
+
+  /* ===========================================
+     GHOST IMAGE — follows cursor on table row hover
+     =========================================== */
+  (function () {
+    var ghost    = document.getElementById('ghost-wrapper');
+    var ghostImg = document.getElementById('ghost-img');
+    var rows     = document.querySelectorAll('.index-row');
+
+    document.addEventListener('mousemove', function (e) {
+      if (ghost.classList.contains('is-active')) {
+        ghost.style.left = e.clientX + 'px';
+        ghost.style.top  = e.clientY + 'px';
+      }
+    });
+
+    rows.forEach(function (row) {
+      row.addEventListener('mouseenter', function () {
+        var src = row.getAttribute('data-img');
+        if (src) {
+          ghostImg.src = src;
+          ghost.classList.add('is-active');
+        }
+      });
+      row.addEventListener('mouseleave', function () {
+        ghost.classList.remove('is-active');
+      });
+    });
+  })();
+  </script>
+
+</body>
+</html>
